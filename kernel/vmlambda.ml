@@ -16,12 +16,18 @@ let get_lval (_, v) = v
 
 let is_value lc =
   match node lc with
-  | Lval _ | Lint _ | Luint _ | Lfloat _ | Lstring _ -> true
+  | Lval _ | Lint _ | Luint _ | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _ | Lfloat _ | Lstring _ -> true
   | _ -> false
 
 let get_value lc =
   match node lc with
   | Luint i -> val_of_uint i
+  | Lword8 i -> val_of_word8 i
+  | Lword16 i -> val_of_word16 i
+  | Lword32 i -> val_of_word32 i
+  | Lword64 i -> val_of_word64 i
+  | Lword128 i -> val_of_word128 i
+  | Lword256 i -> val_of_word256 i
   | Lval (_, v) -> v
   | Lint i -> val_of_int i
   | Lfloat f -> val_of_float f
@@ -33,6 +39,12 @@ let hash_block tag args =
   let fold accu v =
     let h = match node v with
     | Luint i -> Uint63.hash i
+    | Lword8 i -> Primitive_words_runtime.Word8.hash i
+    | Lword16 i -> Primitive_words_runtime.Word16.hash i
+    | Lword32 i -> Primitive_words_runtime.Word32.hash i
+    | Lword64 i -> Primitive_words_runtime.Word64.hash i
+    | Lword128 i -> Primitive_words_runtime.Word128.hash i
+    | Lword256 i -> Primitive_words_runtime.Word256.hash i
     | Lint i -> Hashtbl.hash (i : int)
     | Lfloat f -> Float64.hash f
     | Lstring s -> Pstring.hash s

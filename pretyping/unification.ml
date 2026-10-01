@@ -931,7 +931,7 @@ let is_rigid_head sigma flags t =
   match EConstr.kind sigma t with
   | Const (cst,u) -> not (Structures.PrimitiveProjections.is_transparent_constant flags.modulo_delta cst)
   | Ind (i,u) -> true
-  | Construct _ | Int _ | Float _ | String _ | Array _ -> true
+  | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> true
   | Fix _ | CoFix _ -> true
   | Rel _ | Var _ | Meta _ | Evar _ | Sort _ | Cast (_, _, _) | Prod _
     | Lambda _ | LetIn _ | App (_, _) | Case _
@@ -1034,7 +1034,7 @@ let rec is_neutral env sigma ts t =
     | Evar _ | Meta _ -> true
     | Case (_, _, _, _, _, c, _) -> is_neutral env sigma ts c
     | Proj (p, _, c) -> is_neutral env sigma ts c
-    | Lambda _ | LetIn _ | Construct _ | CoFix _ | Int _ | Float _ | String _ | Array _ -> false
+    | Lambda _ | LetIn _ | Construct _ | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> false
     | Sort _ | Cast (_, _, _) | Prod (_, _, _) | Ind _ -> false (* Really? *)
     | Fix _ -> false (* This is an approximation *)
     | App _ -> assert false
@@ -2328,7 +2328,7 @@ let get_max_rel_array sigma v = Array.fold_left (fun accu c -> max accu (get_max
 let anorec = AOther [||]
 
 let rec make0 atyp sigma c0 = match EConstr.kind sigma c0 with
-| (Meta _ | Var _ | Sort _ | Const _ | Ind _ | Construct _ | Int _ | Float _ | String _) ->
+| (Meta _ | Var _ | Sort _ | Const _ | Ind _ | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) ->
   { proj = c0; self = anorec; data = 0; atyp }
 | Rel n ->
   { proj = c0; self = anorec; data = n; atyp }
@@ -2589,7 +2589,7 @@ let w_unify_to_subterm_all ~metas env evd ?(flags=default_unify_flags ()) (op,cl
           | Cast (_, _, _)  -> fail "Match_subterm" (* Is this expected? *)
 
           | Rel _ | Var _ | Meta _ | Evar _ | Sort _ | Const _ | Ind _
-            | Construct _ | Int _ | Float _ | String _ -> fail "Match_subterm"))
+            | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ -> fail "Match_subterm"))
 
   in
   let res = matchrec cl [] in

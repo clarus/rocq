@@ -42,6 +42,12 @@ type structured_constant =
   | Const_univ_instance of UVars.Instance.t
   | Const_val of structured_values
   | Const_uint of Uint63.t
+  | Const_word8 of Primitive_words_runtime.Word8.t
+  | Const_word16 of Primitive_words_runtime.Word16.t
+  | Const_word32 of Primitive_words_runtime.Word32.t
+  | Const_word64 of Primitive_words_runtime.Word64.t
+  | Const_word128 of Primitive_words_runtime.Word128.t
+  | Const_word256 of Primitive_words_runtime.Word256.t
   | Const_float of Float64.t
   | Const_string of Pstring.t
 
@@ -139,6 +145,14 @@ val val_of_atom : atom -> values
 val val_of_int : int -> structured_values
 val val_of_block : tag -> structured_values array -> structured_values
 val val_of_uint : Uint63.t -> structured_values
+val val_of_word8 : Primitive_words_runtime.Word8.t -> structured_values
+val val_of_word16 : Primitive_words_runtime.Word16.t -> structured_values
+val val_of_word32 : Primitive_words_runtime.Word32.t -> structured_values
+val val_of_word64 : Primitive_words_runtime.Word64.t -> structured_values
+val val_of_word128 : Primitive_words_runtime.Word128.t -> structured_values
+val val_of_word256 : Primitive_words_runtime.Word256.t -> structured_values
+val word_prim : CPrimitives.word_width -> CPrimitives.word_op -> values
+
 val val_of_float : Float64.t -> structured_values
 val val_of_string : Pstring.t -> structured_values
 

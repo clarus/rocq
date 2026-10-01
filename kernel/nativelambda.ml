@@ -21,7 +21,7 @@ type lambda = Nativevalues.t Genlambda.lambda
 
 let is_value lc =
   match node lc with
-  | Lval _ | Lint _ | Luint _ | Lfloat _ | Lstring _ -> true
+  | Lval _ | Lint _ | Luint _ | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _ | Lfloat _ | Lstring _ -> true
   | _ -> false
 
 let get_value lc =
@@ -29,6 +29,9 @@ let get_value lc =
   | Lval v -> v
   | Lint tag -> Nativevalues.mk_int tag
   | Luint i -> Nativevalues.mk_uint i
+  | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _ ->
+    CErrors.user_err
+      Pp.(str "Rocq native evaluation of primitive words is unsupported; use vm_compute")
   | Lfloat f -> Nativevalues.mk_float f
   | Lstring s -> Nativevalues.mk_string s
   | _ -> raise Not_found

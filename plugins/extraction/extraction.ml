@@ -409,6 +409,7 @@ let rec extract_type (table : Common.State.t) env sg db j c args =
             | (Info, TypeScheme) ->
               extract_type_app table env sg db (r, type_sign env sg ty) args
             | (Info, Default) -> Tunknown))
+    | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> Tunknown
     | Cast _ | LetIn _ | Construct _ | Int _ | Float _ | String _ | Array _ -> assert false
 
 (*s Auxiliary function dealing with type application.
@@ -767,6 +768,12 @@ let rec extract_term table env sg mle mlt c args =
        let extract_var mlt = put_magic (mlt,vty) (MLglob r) in
        extract_app table env sg mle mlt extract_var args
     | Int i -> assert (args = []); MLuint i
+    | Word8 i -> assert (args = []); MLword8 i
+    | Word16 i -> assert (args = []); MLword16 i
+    | Word32 i -> assert (args = []); MLword32 i
+    | Word64 i -> assert (args = []); MLword64 i
+    | Word128 i -> assert (args = []); MLword128 i
+    | Word256 i -> assert (args = []); MLword256 i
     | Float f -> assert (args = []); MLfloat f
     | String s -> assert (args = []); MLstring s
     | Array (_u,t,def,_ty) ->

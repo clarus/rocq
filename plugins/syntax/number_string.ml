@@ -107,6 +107,19 @@ let locate_int63 () =
   | pos_neg_int63 ->
     [ { kind = Int63 {pos_neg_int63_ty = unsafe_ref_ind pos_neg_int63}; typ = gref pos_neg_int63 }; ]
 
+let locate_word64 () =
+  let pos_neg_word64n = "num.word64.pos_neg_word64" in
+  match Rocqlib.lib_ref pos_neg_word64n with
+  | exception Rocqlib.NotFoundRef _ -> []
+  | pos_neg_word64 ->
+    [ { kind = Word64 {pos_neg_word64_ty = unsafe_ref_ind pos_neg_word64}; typ = gref pos_neg_word64 }; ]
+
+let locate_small_word width kind =
+  let name = "num.word" ^ width ^ ".pos_neg_word" ^ width in
+  match Rocqlib.lib_ref name with
+  | exception Rocqlib.NotFoundRef _ -> []
+  | ind -> [ { kind = kind {pos_neg_word64_ty = unsafe_ref_ind ind}; typ = gref ind } ]
+
 
 let locate_float () =
   let floatn = "num.float.type" in
@@ -452,12 +465,36 @@ let locate_global_inductive_or_int63_or_float env allow_params qid =
     let int63n = "num.int63.type" in
     let int63c = "num.int63.wrap_int" in
     let int63w = "num.int63.int_wrapper" in
+    let word64n = "num.word64.type" in
+    let word64c = "num.word64.wrap_word64" in
+    let word64w = "num.word64.word64_wrapper" in
+    let small_type width = "num.word" ^ width ^ ".type" in
+    let small_wrap width = "num.word" ^ width ^ ".wrap_word" ^ width in
+    let small_wrapper width = "num.word" ^ width ^ ".word" ^ width ^ "_wrapper" in
     let floatn = "num.float.type" in
     let floatc = "num.float.wrap_float" in
     let floatw = "num.float.float_wrapper" in
     if allow_params && Rocqlib.check_ref int63n (Smartlocate.global_with_alias qid)
     then TargetPrim (Rocqlib.lib_ref int63w, [Rocqlib.lib_ref int63c],
                      (Nametab.path_of_global (Rocqlib.lib_ref int63n), []))
+    else if allow_params && Rocqlib.check_ref word64n (Smartlocate.global_with_alias qid)
+    then TargetPrim (Rocqlib.lib_ref word64w, [Rocqlib.lib_ref word64c],
+                     (Nametab.path_of_global (Rocqlib.lib_ref word64n), []))
+    else if allow_params && Rocqlib.check_ref (small_type "8") (Smartlocate.global_with_alias qid)
+    then TargetPrim (Rocqlib.lib_ref (small_wrapper "8"), [Rocqlib.lib_ref (small_wrap "8")],
+                     (Nametab.path_of_global (Rocqlib.lib_ref (small_type "8")), []))
+    else if allow_params && Rocqlib.check_ref (small_type "16") (Smartlocate.global_with_alias qid)
+    then TargetPrim (Rocqlib.lib_ref (small_wrapper "16"), [Rocqlib.lib_ref (small_wrap "16")],
+                     (Nametab.path_of_global (Rocqlib.lib_ref (small_type "16")), []))
+    else if allow_params && Rocqlib.check_ref (small_type "32") (Smartlocate.global_with_alias qid)
+    then TargetPrim (Rocqlib.lib_ref (small_wrapper "32"), [Rocqlib.lib_ref (small_wrap "32")],
+                     (Nametab.path_of_global (Rocqlib.lib_ref (small_type "32")), []))
+    else if allow_params && Rocqlib.check_ref (small_type "128") (Smartlocate.global_with_alias qid)
+    then TargetPrim (Rocqlib.lib_ref (small_wrapper "128"), [Rocqlib.lib_ref (small_wrap "128")],
+                     (Nametab.path_of_global (Rocqlib.lib_ref (small_type "128")), []))
+    else if allow_params && Rocqlib.check_ref (small_type "256") (Smartlocate.global_with_alias qid)
+    then TargetPrim (Rocqlib.lib_ref (small_wrapper "256"), [Rocqlib.lib_ref (small_wrap "256")],
+                     (Nametab.path_of_global (Rocqlib.lib_ref (small_type "256")), []))
     else if allow_params && Rocqlib.check_ref floatn (Smartlocate.global_with_alias qid)
     then TargetPrim (Rocqlib.lib_ref floatw, [Rocqlib.lib_ref floatc],
                      (Nametab.path_of_global (Rocqlib.lib_ref floatn), []))
@@ -488,6 +525,12 @@ let vernac_number_notation local ty f g opts scope =
       locate_number ();
       locate_z ();
       locate_int63 ();
+      locate_small_word "8" (fun x -> Word8 x);
+      locate_small_word "16" (fun x -> Word16 x);
+      locate_small_word "32" (fun x -> Word32 x);
+      locate_word64 ();
+      locate_small_word "128" (fun x -> Word128 x);
+      locate_small_word "256" (fun x -> Word256 x);
       locate_float ();
     ]
   in

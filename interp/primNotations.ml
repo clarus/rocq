@@ -137,11 +137,20 @@ type number_ty =
 type pos_neg_int63_ty =
   { pos_neg_int63_ty : Names.inductive }
 
+type pos_neg_word64_ty =
+  { pos_neg_word64_ty : Names.inductive }
+
 type target_kind =
   | Int of int_ty (* Corelib.Init.Number.int + uint *)
   | UInt of int_ty (* Corelib.Init.Number.uint *)
   | Z of z_pos_ty (* Corelib.Numbers.BinNums.Z and positive *)
   | Int63 of pos_neg_int63_ty (* Corelib.Numbers.Cyclic.Int63.PrimInt63.pos_neg_int63 *)
+  | Word8 of pos_neg_word64_ty
+  | Word16 of pos_neg_word64_ty
+  | Word32 of pos_neg_word64_ty
+  | Word64 of pos_neg_word64_ty (* Corelib.Numbers.Primitive.Word64.pos_neg_word64 *)
+  | Word128 of pos_neg_word64_ty
+  | Word256 of pos_neg_word64_ty
   | Float64 (* Corelib.Floats.PrimFloat.float *)
   | Number of number_ty (* Corelib.Init.Number.number + uint + int *)
 
@@ -188,6 +197,12 @@ type 'a token_kind =
 | TInd of inductive * 'a list
 | TConstruct of constructor * 'a list
 | TInt of Uint63.t
+| TWord8 of Primitive_words_runtime.Word8.t
+| TWord16 of Primitive_words_runtime.Word16.t
+| TWord32 of Primitive_words_runtime.Word32.t
+| TWord64 of Primitive_words_runtime.Word64.t
+| TWord128 of Primitive_words_runtime.Word128.t
+| TWord256 of Primitive_words_runtime.Word256.t
 | TFloat of Float64.t
 | TString of Pstring.t
 | TArray of 'a array * 'a * 'a
@@ -213,15 +228,30 @@ let kind c =
   | Ind (ind, _) -> TInd (ind, args)
   | Construct (c, _) -> TConstruct (c, args)
   | Int i -> TInt i
+  | Word8 i -> TWord8 i
+  | Word16 i -> TWord16 i
+  | Word32 i -> TWord32 i
+  | Word64 i -> TWord64 i
+  | Word128 i -> TWord128 i
+  | Word256 i -> TWord256 i
   | Float f -> TFloat f
   | String s -> TString s
   | Array (_, t, u, v) -> TArray (t, u, v)
   | Rel _ | Meta _ | Evar _ | Cast _ | Prod _ | Lambda _ | LetIn _ | App _
   | Proj _ | Case _ | Fix _ | CoFix _ -> TOther
 
+let rec contains_primitive_word c =
+  match Constr.kind c with
+  | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> true
+  | _ -> Constr.fold (fun found c -> found || contains_primitive_word c) false c
+
 let make env sigma c =
   let flags = Environ.typing_flags env in
-  if flags.enable_VM then
+  (* Number-notation
+     interpretation is not an evaluator surface, so keep printing usable by
+     normalizing tokens that contain primitive words through the kernel reducer. *)
+  if flags.enable_VM &&
+     not (contains_primitive_word (EConstr.Unsafe.to_constr c.Environ.uj_val)) then
     let flags = Vnorm.{ vm_normalize_params = true } in
     let c' = Vnorm.cbv_vm ~flags env sigma c.Environ.uj_val c.Environ.uj_type in
     EConstr.Unsafe.to_constr @@ c'
@@ -306,6 +336,21 @@ let rec check_glob env sigma g c =
        with Invalid_argument _ -> raise NotAValidPrimToken in
      sigma, mkApp (c, Array.of_list cl)
   | Glob_term.GInt i, Constr.Int i' when Uint63.equal i i' -> sigma, mkInt i
+  | Glob_term.GWord8 i, Constr.Word8 i' when Primitive_words_runtime.Word8.equal i i' ->
+       sigma, EConstr.of_constr (Constr.mkWord8 i)
+  | Glob_term.GWord16 i, Constr.Word16 i' when Primitive_words_runtime.Word16.equal i i' ->
+       sigma, EConstr.of_constr (Constr.mkWord16 i)
+  | Glob_term.GWord32 i, Constr.Word32 i' when Primitive_words_runtime.Word32.equal i i' ->
+       sigma, EConstr.of_constr (Constr.mkWord32 i)
+  | Glob_term.GWord64 i, Constr.Word64 i'
+       when Primitive_words_runtime.Word64.equal i i' ->
+       sigma, EConstr.of_constr (Constr.mkWord64 i)
+  | Glob_term.GWord128 i, Constr.Word128 i'
+       when Primitive_words_runtime.Word128.equal i i' ->
+       sigma, EConstr.of_constr (Constr.mkWord128 i)
+  | Glob_term.GWord256 i, Constr.Word256 i'
+       when Primitive_words_runtime.Word256.equal i i' ->
+       sigma, EConstr.of_constr (Constr.mkWord256 i)
   | Glob_term.GFloat f, Constr.Float f' when Float64.equal f f' -> sigma, mkFloat f
   | Glob_term.GString s, Constr.String s' when Pstring.equal s s' -> sigma, mkString s
   | Glob_term.GArray (_,t,def,ty), Constr.Array (_,t',def',ty') ->
@@ -369,6 +414,12 @@ let rec constr_of_glob to_post post env sigma g =
          sigma,mkApp (c, Array.of_list cl)
       end
   | Glob_term.GInt i -> sigma, mkInt i
+  | Glob_term.GWord8 i -> sigma, EConstr.of_constr (Constr.mkWord8 i)
+  | Glob_term.GWord16 i -> sigma, EConstr.of_constr (Constr.mkWord16 i)
+  | Glob_term.GWord32 i -> sigma, EConstr.of_constr (Constr.mkWord32 i)
+  | Glob_term.GWord64 i -> sigma, EConstr.of_constr (Constr.mkWord64 i)
+  | Glob_term.GWord128 i -> sigma, EConstr.of_constr (Constr.mkWord128 i)
+  | Glob_term.GWord256 i -> sigma, EConstr.of_constr (Constr.mkWord256 i)
   | Glob_term.GFloat f -> sigma, mkFloat f
   | Glob_term.GString s -> sigma, mkString s
   | Glob_term.GArray (_,t,def,ty) ->
@@ -397,6 +448,12 @@ let rec glob_of_constr token_kind ?loc env sigma c = match Constr.kind c with
   | Ind (ind, _) -> DAst.make ?loc (Glob_term.GRef (GlobRef.IndRef ind, None))
   | Var id -> DAst.make ?loc (Glob_term.GRef (GlobRef.VarRef id, None))
   | Int i -> DAst.make ?loc (Glob_term.GInt i)
+  | Word8 i -> DAst.make ?loc (Glob_term.GWord8 i)
+  | Word16 i -> DAst.make ?loc (Glob_term.GWord16 i)
+  | Word32 i -> DAst.make ?loc (Glob_term.GWord32 i)
+  | Word64 i -> DAst.make ?loc (Glob_term.GWord64 i)
+  | Word128 i -> DAst.make ?loc (Glob_term.GWord128 i)
+  | Word256 i -> DAst.make ?loc (Glob_term.GWord256 i)
   | Float f -> DAst.make ?loc (Glob_term.GFloat f)
   | String s -> DAst.make ?loc (Glob_term.GString s)
   | Array (u,t,def,ty) ->
@@ -432,6 +489,12 @@ let rec glob_of_token token_kind ?loc env sigma c = match TokenValue.kind c with
     let cel = List.map (glob_of_token token_kind ?loc env sigma) l in
     mkGApp ?loc ce cel
   | TInt i -> DAst.make ?loc (Glob_term.GInt i)
+  | TWord8 i -> DAst.make ?loc (Glob_term.GWord8 i)
+  | TWord16 i -> DAst.make ?loc (Glob_term.GWord16 i)
+  | TWord32 i -> DAst.make ?loc (Glob_term.GWord32 i)
+  | TWord64 i -> DAst.make ?loc (Glob_term.GWord64 i)
+  | TWord128 i -> DAst.make ?loc (Glob_term.GWord128 i)
+  | TWord256 i -> DAst.make ?loc (Glob_term.GWord256 i)
   | TFloat f -> DAst.make ?loc (Glob_term.GFloat f)
   | TString s -> DAst.make ?loc (Glob_term.GString s)
   | TArray (t,def,ty) ->
@@ -750,6 +813,83 @@ let interp_int63 ?loc esig ind n =
   then rocqpos_neg_int63_of_bigint ?loc esig ind (sign,an)
   else error_overflow ?loc n
 
+let error_word64_overflow ?loc n =
+  CErrors.user_err ?loc Pp.(str "Overflow in word64 literal: " ++ str (Z.to_string n)
+    ++ str ".")
+
+let rocqpos_neg_word64_of_bigint esig ind (sign,n) =
+  let signed =
+    if Z.(compare n (shift_left one 63) >= 0)
+    then Z.(sub n (shift_left one 64))
+    else n
+  in
+  let word = mkWord64 (Primitive_words_runtime.Word64.of_int64 (Z.to_int64 signed)) in
+  let pos_neg = match sign with SPlus -> 1 | SMinus -> 2 in
+  mkApp (mkConstruct esig (ind, pos_neg), [|word|])
+
+let interp_word64 ?loc esig ind n =
+  let sign = if Z.(compare n zero >= 0) then SPlus else SMinus in
+  let an = Z.abs n in
+  if Z.(lt an (pow z_two 64))
+  then rocqpos_neg_word64_of_bigint esig ind (sign,an)
+  else error_word64_overflow ?loc n
+
+let int64_bits_of_bigint n =
+  let modulus = Z.shift_left Z.one 64 in
+  let signbit = Z.shift_left Z.one 63 in
+  let limb = Z.logand n (Z.pred modulus) in
+  Z.to_int64 (if Z.compare limb signbit >= 0 then Z.sub limb modulus else limb)
+
+let interp_wide_word ?loc width make esig ind n =
+  let sign = if Z.compare n Z.zero >= 0 then SPlus else SMinus in
+  let an = Z.abs n in
+  if Z.compare an (Z.shift_left Z.one width) < 0 then
+    let word = make an in
+    let pos_neg = match sign with SPlus -> 1 | SMinus -> 2 in
+    mkApp (mkConstruct esig (ind, pos_neg), [|word|])
+  else CErrors.user_err ?loc Pp.(str "Overflow in word" ++ int width ++
+    str " literal: " ++ str (Z.to_string n) ++ str ".")
+
+let interp_word128 ?loc esig ind n =
+  interp_wide_word ?loc 128
+    (fun n -> mkWord128 (Primitive_words_runtime.Word128.of_limbs
+      ~low:(int64_bits_of_bigint n)
+      ~high:(int64_bits_of_bigint (Z.shift_right n 64)))) esig ind n
+
+let interp_word256 ?loc esig ind n =
+  interp_wide_word ?loc 256
+    (fun n -> mkWord256 (Primitive_words_runtime.Word256.of_limbs
+      ~limb0:(int64_bits_of_bigint n)
+      ~limb1:(int64_bits_of_bigint (Z.shift_right n 64))
+      ~limb2:(int64_bits_of_bigint (Z.shift_right n 128))
+      ~limb3:(int64_bits_of_bigint (Z.shift_right n 192)))) esig ind n
+
+let interp_small_word ?loc width make esig ind n =
+  let sign = if Z.(compare n zero >= 0) then SPlus else SMinus in
+  let an = Z.abs n in
+  if Z.(lt an (shift_left one width)) then
+    let word = make an in
+    let pos_neg = match sign with SPlus -> 1 | SMinus -> 2 in
+    mkApp (mkConstruct esig (ind, pos_neg), [|word|])
+  else CErrors.user_err ?loc Pp.(str "Overflow in word" ++ int width ++
+    str " literal: " ++ str (Z.to_string n) ++ str ".")
+
+let interp_word8 ?loc esig ind n =
+  interp_small_word ?loc 8
+    (fun n -> mkWord8 (Primitive_words_runtime.Word8.of_int (Z.to_int n))) esig ind n
+
+let interp_word16 ?loc esig ind n =
+  interp_small_word ?loc 16
+    (fun n -> mkWord16 (Primitive_words_runtime.Word16.of_int (Z.to_int n))) esig ind n
+
+let interp_word32 ?loc esig ind n =
+  let make n =
+    let signed = if Z.(compare n (shift_left one 31) >= 0)
+      then Z.(sub n (shift_left one 32)) else n in
+    mkWord32 (Primitive_words_runtime.Word32.of_int32 (Z.to_int32 signed))
+  in
+  interp_small_word ?loc 32 make esig ind n
+
 let warn_inexact_float =
   CWarnings.create ~name:"inexact-float" ~category:CWarnings.CoreCategories.parsing
     (fun (sn, f) ->
@@ -806,6 +946,55 @@ let bigint_of_int63 c = match TokenValue.kind c with
 | TInt i -> Z.of_int64 (Uint63.to_int64 i)
 | _ -> raise NotAValidPrimToken
 
+let bigint_of_word64 c = match TokenValue.kind c with
+| TWord64 i ->
+  let raw = Primitive_words_runtime.Word64.to_int64 i in
+  let z = Z.of_int64 raw in
+  if Int64.compare raw 0L < 0 then Z.add z (Z.shift_left Z.one 64) else z
+| _ -> raise NotAValidPrimToken
+
+let bigint_of_int64_bits raw =
+  let z = Z.of_int64 raw in
+  if Int64.compare raw 0L < 0 then Z.add z (Z.shift_left Z.one 64) else z
+
+let bigint_of_word128 c = match TokenValue.kind c with
+| TWord128 i ->
+  let low, high = Primitive_words_runtime.Word128.to_limbs i in
+  Z.logor (bigint_of_int64_bits low) (Z.shift_left (bigint_of_int64_bits high) 64)
+| _ -> raise NotAValidPrimToken
+
+let bigint_of_word256 c = match TokenValue.kind c with
+| TWord256 i ->
+  let l0, l1, l2, l3 = Primitive_words_runtime.Word256.to_limbs i in
+  Z.logor (bigint_of_int64_bits l0)
+    (Z.logor (Z.shift_left (bigint_of_int64_bits l1) 64)
+      (Z.logor (Z.shift_left (bigint_of_int64_bits l2) 128)
+        (Z.shift_left (bigint_of_int64_bits l3) 192)))
+| _ -> raise NotAValidPrimToken
+
+let bigint_of_rocqpos_neg_word64 c = match TokenValue.kind c with
+| TConstruct ((_, 1), [c']) -> bigint_of_word64 c'
+| TConstruct ((_, 2), [c']) -> Z.neg (bigint_of_word64 c')
+| _ -> raise NotAValidPrimToken
+
+let bigint_of_word8 c = match TokenValue.kind c with
+| TWord8 i -> Z.of_int (Primitive_words_runtime.Word8.to_int i)
+| _ -> raise NotAValidPrimToken
+let bigint_of_word16 c = match TokenValue.kind c with
+| TWord16 i -> Z.of_int (Primitive_words_runtime.Word16.to_int i)
+| _ -> raise NotAValidPrimToken
+let bigint_of_word32 c = match TokenValue.kind c with
+| TWord32 i ->
+  let raw = Primitive_words_runtime.Word32.to_int32 i in
+  let z = Z.of_int32 raw in
+  if Int32.compare raw 0l < 0 then Z.add z (Z.shift_left Z.one 32) else z
+| _ -> raise NotAValidPrimToken
+
+let bigint_of_rocqpos_neg word_value c = match TokenValue.kind c with
+| TConstruct ((_, 1), [c']) -> word_value c'
+| TConstruct ((_, 2), [c']) -> Z.neg (word_value c')
+| _ -> raise NotAValidPrimToken
+
 let bigint_of_rocqpos_neg_int63 c = match TokenValue.kind c with
 | TConstruct ((_, 1), [c']) (* Pos *) -> bigint_of_int63 c'
 | TConstruct ((_, 2), [c']) (* Neg *) -> Z.neg (bigint_of_int63 c')
@@ -835,7 +1024,16 @@ let interp o ?loc n =
        z_of_bigint esig z_pos_ty (NumTok.SignedNat.to_bigint n)
     | Int63 pos_neg_int63_ty, Some n ->
        interp_int63 ?loc esig pos_neg_int63_ty.pos_neg_int63_ty (NumTok.SignedNat.to_bigint n)
-    | (Int _ | UInt _ | Z _ | Int63 _), _ ->
+    | Word8 ty, Some n -> interp_word8 ?loc esig ty.pos_neg_word64_ty (NumTok.SignedNat.to_bigint n)
+    | Word16 ty, Some n -> interp_word16 ?loc esig ty.pos_neg_word64_ty (NumTok.SignedNat.to_bigint n)
+    | Word32 ty, Some n -> interp_word32 ?loc esig ty.pos_neg_word64_ty (NumTok.SignedNat.to_bigint n)
+    | Word64 pos_neg_word64_ty, Some n ->
+       interp_word64 ?loc esig pos_neg_word64_ty.pos_neg_word64_ty (NumTok.SignedNat.to_bigint n)
+    | Word128 ty, Some n ->
+       interp_word128 ?loc esig ty.pos_neg_word64_ty (NumTok.SignedNat.to_bigint n)
+    | Word256 ty, Some n ->
+       interp_word256 ?loc esig ty.pos_neg_word64_ty (NumTok.SignedNat.to_bigint n)
+    | (Int _ | UInt _ | Z _ | Int63 _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _), _ ->
        no_such_prim_token "number" ?loc o.ty_name
     | Float64, _ -> interp_float64 ?loc n
     | Number number_ty, _ -> rocqnumber_of_rawnum esig number_ty n
@@ -862,6 +1060,12 @@ let uninterp ~print_float o n =
       | (UInt _, c) -> NumTok.Signed.of_nat (rawnum_of_rocquint c)
       | (Z _, c) -> NumTok.Signed.of_bigint CDec (bigint_of_z c)
       | (Int63 _, c) -> NumTok.Signed.of_bigint CDec (bigint_of_rocqpos_neg_int63 c)
+      | (Word8 _, c) -> NumTok.Signed.of_bigint CDec (bigint_of_rocqpos_neg bigint_of_word8 c)
+      | (Word16 _, c) -> NumTok.Signed.of_bigint CDec (bigint_of_rocqpos_neg bigint_of_word16 c)
+      | (Word32 _, c) -> NumTok.Signed.of_bigint CDec (bigint_of_rocqpos_neg bigint_of_word32 c)
+      | (Word64 _, c) -> NumTok.Signed.of_bigint CDec (bigint_of_rocqpos_neg_word64 c)
+      | (Word128 _, c) -> NumTok.Signed.of_bigint CDec (bigint_of_rocqpos_neg bigint_of_word128 c)
+      | (Word256 _, c) -> NumTok.Signed.of_bigint CDec (bigint_of_rocqpos_neg bigint_of_word256 c)
       | (Float64, c) -> uninterp_float64 ~print_float c
       | (Number _, c) -> rawnum_of_rocqnumber c
     end o n

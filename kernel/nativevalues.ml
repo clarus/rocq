@@ -264,6 +264,15 @@ let kind_of_value (v:t) =
         if Int.equal tag prod_tag then Obj.magic w
         else Varray (Obj.magic v)
       else Vaccu (Obj.magic v)
+    else if Int.equal tag Obj.custom_tag &&
+            Primitive_words_runtime.Word64.is_runtime_value o
+    then Vword64 (Obj.magic v)
+    else if Int.equal tag Obj.custom_tag &&
+            Primitive_words_runtime.Word128.is_runtime_value o
+    then Vword128 (Obj.magic v)
+    else if Int.equal tag Obj.custom_tag &&
+            Primitive_words_runtime.Word256.is_runtime_value o
+    then Vword256 (Obj.magic v)
     else if Int.equal tag Obj.custom_tag then Vint64 (Obj.magic v)
     else if Int.equal tag Obj.double_tag then Vfloat64 (Obj.magic v)
     else if Int.equal tag Obj.string_tag then Vstring (Obj.magic v)

@@ -543,7 +543,7 @@ let map_constr_with_binders_left_to_right env sigma g f l c =
   let open EConstr in
   match EConstr.kind sigma c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> c
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> c
   | Cast (b,k,t) ->
     let b' = f l b in
     let t' = f l t in
@@ -619,7 +619,7 @@ let map_constr_with_full_binders env sigma g f l cstr =
   let open EConstr in
   match EConstr.kind sigma cstr with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> cstr
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> cstr
   | Cast (c,k, t) ->
       let c' = f l c in
       let t' = f l t in
@@ -691,7 +691,7 @@ let fold_constr_with_full_binders env sigma g f n acc c =
   let open EConstr.Vars in
   let open Context.Rel.Declaration in
   match EConstr.kind sigma c with
-  | Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _ | Construct _  | Int _ | Float _ | String _ -> acc
+  | Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _ | Construct _  | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ -> acc
   | Cast (c,_, t) -> f n (f n acc c) t
   | Prod (na,t,c) -> f (g (LocalAssum (na,t)) n) (f n acc t) c
   | Lambda (na,t,c) -> f (g (LocalAssum (na,t)) n) (f n acc t) c
@@ -1328,6 +1328,21 @@ let constr_ord_int f t1 t2 =
     | Proj _, _ -> -1 | _, Proj _ -> 1
     | Int i1, Int i2 -> Uint63.compare i1 i2
     | Int _, _ -> -1 | _, Int _ -> 1
+    | Word8 i1, Word8 i2 -> Primitive_words_runtime.Word8.compare_unsigned i1 i2
+    | Word8 _, _ -> -1 | _, Word8 _ -> 1
+    | Word16 i1, Word16 i2 -> Primitive_words_runtime.Word16.compare_unsigned i1 i2
+    | Word16 _, _ -> -1 | _, Word16 _ -> 1
+    | Word32 i1, Word32 i2 -> Primitive_words_runtime.Word32.compare_unsigned i1 i2
+    | Word32 _, _ -> -1 | _, Word32 _ -> 1
+    | Word64 i1, Word64 i2 ->
+      Primitive_words_runtime.Word64.compare_unsigned i1 i2
+    | Word64 _, _ -> -1 | _, Word64 _ -> 1
+    | Word128 i1, Word128 i2 ->
+      Primitive_words_runtime.Word128.compare_unsigned i1 i2
+    | Word128 _, _ -> -1 | _, Word128 _ -> 1
+    | Word256 i1, Word256 i2 ->
+      Primitive_words_runtime.Word256.compare_unsigned i1 i2
+    | Word256 _, _ -> -1 | _, Word256 _ -> 1
     | Float f1, Float f2 -> Float64.total_compare f1 f2
     | Float _, _ -> -1 | _, Float _ -> 1
     | String s1, String s2 -> Pstring.compare s1 s2
@@ -1382,10 +1397,16 @@ let rec hash t =
     | Proj (p,r, c) ->
       combinesmall 17 (combine3 (Projection.UserOrd.hash p) (Sorts.relevance_hash r) (hash c))
     | Int i -> combinesmall 18 (Uint63.hash i)
-    | Float f -> combinesmall 19 (Float64.hash f)
-    | String s -> combinesmall 20 (Pstring.hash s)
+    | Word8 i -> combinesmall 19 (Primitive_words_runtime.Word8.hash i)
+    | Word16 i -> combinesmall 20 (Primitive_words_runtime.Word16.hash i)
+    | Word32 i -> combinesmall 21 (Primitive_words_runtime.Word32.hash i)
+    | Word64 i -> combinesmall 22 (Primitive_words_runtime.Word64.hash i)
+    | Word128 i -> combinesmall 23 (Primitive_words_runtime.Word128.hash i)
+    | Word256 i -> combinesmall 24 (Primitive_words_runtime.Word256.hash i)
+    | Float f -> combinesmall 25 (Float64.hash f)
+    | String s -> combinesmall 26 (Pstring.hash s)
     | Array(u,t,def,ty) ->
-      combinesmall 21 (combine4 (Instance.hash u) (hash_term_array t) (hash def) (hash ty))
+      combinesmall 27 (combine4 (Instance.hash u) (hash_term_array t) (hash def) (hash ty))
 
 and hash_invert = function
   | NoInvert -> 0

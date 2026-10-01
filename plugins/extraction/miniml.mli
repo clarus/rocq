@@ -159,6 +159,12 @@ and ml_ast =
   | MLaxiom  of string
   | MLmagic  of ml_ast
   | MLuint   of Uint63.t
+  | MLword8  of Primitive_words_runtime.Word8.t
+  | MLword16 of Primitive_words_runtime.Word16.t
+  | MLword32 of Primitive_words_runtime.Word32.t
+  | MLword64 of Primitive_words_runtime.Word64.t
+  | MLword128 of Primitive_words_runtime.Word128.t
+  | MLword256 of Primitive_words_runtime.Word256.t
   | MLfloat  of Float64.t
   | MLstring of Pstring.t
   | MLparray of ml_ast array * ml_ast

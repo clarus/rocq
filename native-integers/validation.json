@@ -1,0 +1,14 @@
+{
+  "compiler": "5.5.2",
+  "standalone_runtime": "passed",
+  "wide_oracle_rows_per_engine": 144096,
+  "small_integer_exhaustive_8bit_pairs": 65536,
+  "engines": [
+    "native",
+    "bytecode"
+  ],
+  "cross_engine_serialization": "passed",
+  "full_integration": "pending",
+  "core_build": "passed",
+  "corelib_primitive_smoke": "passed"
+}

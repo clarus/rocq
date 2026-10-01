@@ -1,0 +1,9 @@
+(lang dune 3.21)
+(name rocq-primitive-words)
+(using rocq 0.11)
+(generate_opam_files true)
+(version dev)
+(package
+ (name rocq-primitive-words)
+ (synopsis "Native fixed-width integer API for the OCaml Rocq fork")
+ (depends rocq-core rocq-stdlib))

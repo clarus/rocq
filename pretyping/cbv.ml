@@ -261,6 +261,30 @@ module VNativeEntries =
           | _ -> raise Primred.NativeDestKO)
       | _ -> raise Primred.NativeDestKO
 
+    let get_word64 () e =
+      match e with
+      | VAL(_, word) ->
+          (match kind word with
+          | Word64 i -> i
+          | _ -> raise Primred.NativeDestKO)
+      | _ -> raise Primred.NativeDestKO
+
+    let get_word8 () e = match e with
+      | VAL(_, word) -> (match kind word with Word8 i -> i | _ -> raise Primred.NativeDestKO)
+      | _ -> raise Primred.NativeDestKO
+    let get_word16 () e = match e with
+      | VAL(_, word) -> (match kind word with Word16 i -> i | _ -> raise Primred.NativeDestKO)
+      | _ -> raise Primred.NativeDestKO
+    let get_word32 () e = match e with
+      | VAL(_, word) -> (match kind word with Word32 i -> i | _ -> raise Primred.NativeDestKO)
+      | _ -> raise Primred.NativeDestKO
+    let get_word128 () e = match e with
+      | VAL(_, word) -> (match kind word with Word128 i -> i | _ -> raise Primred.NativeDestKO)
+      | _ -> raise Primred.NativeDestKO
+    let get_word256 () e = match e with
+      | VAL(_, word) -> (match kind word with Word256 i -> i | _ -> raise Primred.NativeDestKO)
+      | _ -> raise Primred.NativeDestKO
+
     let get_float () e =
       match e with
       | VAL(_, cf) ->
@@ -283,6 +307,13 @@ module VNativeEntries =
       | _ -> raise Primred.NativeDestKO
 
     let mkInt env i = VAL(0, mkInt i)
+
+    let mkWord8 env i = VAL(0, mkWord8 i)
+    let mkWord16 env i = VAL(0, mkWord16 i)
+    let mkWord32 env i = VAL(0, mkWord32 i)
+    let mkWord64 env i = VAL(0, mkWord64 i)
+    let mkWord128 env i = VAL(0, mkWord128 i)
+    let mkWord256 env i = VAL(0, mkWord256 i)
 
     let mkFloat env f = VAL(0, mkFloat f)
 
@@ -584,7 +615,7 @@ let rec norm_head info env t stack =
     (ARRAY (u,t,ty), stack)
 
   (* neutral cases *)
-  | (Sort _ | Meta _ | Ind _ | Int _ | Float _ | String _) -> (VAL(0, t), stack)
+  | (Sort _ | Meta _ | Ind _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> (VAL(0, t), stack)
   | Prod (na,t,u) -> (PROD(na,t,u,env), stack)
 
 and norm_head_ref k info env stack normt t =

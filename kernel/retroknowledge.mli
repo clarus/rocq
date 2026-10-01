@@ -12,6 +12,12 @@ open Names
 
 type retroknowledge = {
     retro_int63 : Constant.t option;
+    retro_word8 : Constant.t option;
+    retro_word16 : Constant.t option;
+    retro_word32 : Constant.t option;
+    retro_word64 : Constant.t option;
+    retro_word128 : Constant.t option;
+    retro_word256 : Constant.t option;
     retro_float64 : Constant.t option;
     retro_string : Constant.t option;
     retro_array : Constant.t option;

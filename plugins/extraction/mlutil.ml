@@ -400,12 +400,20 @@ let rec eq_ml_ast t1 t2 = match t1, t2 with
 | MLaxiom _, MLaxiom _ -> true (* ignore the name of the axiom *)
 | MLmagic t1, MLmagic t2 -> eq_ml_ast t1 t2
 | MLuint i1, MLuint i2 -> Uint63.equal i1 i2
+| MLword8 i1, MLword8 i2 -> Primitive_words_runtime.Word8.equal i1 i2
+| MLword16 i1, MLword16 i2 -> Primitive_words_runtime.Word16.equal i1 i2
+| MLword32 i1, MLword32 i2 -> Primitive_words_runtime.Word32.equal i1 i2
+| MLword64 i1, MLword64 i2 -> Primitive_words_runtime.Word64.equal i1 i2
+| MLword128 i1, MLword128 i2 -> Primitive_words_runtime.Word128.equal i1 i2
+| MLword256 i1, MLword256 i2 -> Primitive_words_runtime.Word256.equal i1 i2
 | MLfloat f1, MLfloat f2 -> Float64.equal f1 f2
 | MLstring s1, MLstring s2 -> Pstring.equal s1 s2
 | MLparray (t1,def1), MLparray (t2, def2) -> Array.equal eq_ml_ast t1 t2 && eq_ml_ast def1 def2
 | (MLrel _|MLapp _|MLlam _|MLletin _|MLglob _|MLcons _
   |MLtuple _|MLcase _|MLfix _|MLexn _|MLdummy _|MLaxiom _
-  | MLmagic _| MLuint _| MLfloat _| MLstring _| MLparray _), _
+  | MLmagic _| MLuint _| MLword8 _| MLword16 _| MLword32 _| MLword64 _
+  | MLword128 _ | MLword256 _
+  | MLfloat _| MLstring _| MLparray _), _
   -> false
 
 and eq_ml_pattern p1 p2 = match p1, p2 with
@@ -440,7 +448,9 @@ let ast_iter_rel f =
     | MLmagic a -> iter n a
     | MLparray (t,def) -> Array.iter (iter n) t; iter n def
     | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
-    | MLuint _ | MLfloat _ | MLstring _ -> ()
+    | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
+    | MLword128 _ | MLword256 _
+    | MLfloat _ | MLstring _ -> ()
   in iter 0
 
 (*s Map over asts. *)
@@ -461,7 +471,9 @@ let ast_map f = function
   | MLmagic a -> MLmagic (f a)
   | MLparray (t,def) -> MLparray (Array.map f t, f def)
   | MLrel _ | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
-  | MLuint _ | MLfloat _ | MLstring _ as a -> a
+  | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
+  | MLword128 _ | MLword256 _
+  | MLfloat _ | MLstring _ as a -> a
 
 (*s Map over asts, with binding depth as parameter. *)
 
@@ -481,7 +493,9 @@ let ast_map_lift f n = function
   | MLmagic a -> MLmagic (f n a)
   | MLparray (t,def) -> MLparray (Array.map (f n) t, f n def)
   | MLrel _ | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
-  | MLuint _ | MLfloat _ | MLstring _ as a -> a
+  | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
+  | MLword128 _ | MLword256 _
+  | MLfloat _ | MLstring _ as a -> a
 
 (*s Iter over asts. *)
 
@@ -497,7 +511,9 @@ let ast_iter f = function
   | MLmagic a -> f a
   | MLparray (t,def) -> Array.iter f t; f def
   | MLrel _ | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
-  | MLuint _ | MLfloat _ | MLstring _ -> ()
+  | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
+  | MLword128 _ | MLword256 _
+  | MLfloat _ | MLstring _ -> ()
 
 (*S Operations concerning De Bruijn indices. *)
 
@@ -535,7 +551,9 @@ let nb_occur_match =
     | MLmagic a -> nb k a
     | MLparray (t,def) -> Array.fold_left (fun r a -> r+(nb k a)) 0 t + nb k def
     | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
-    | MLuint _ | MLfloat _ | MLstring _ -> 0
+    | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
+    | MLword128 _ | MLword256 _
+    | MLfloat _ | MLstring _ -> 0
   in nb 1
 
 (* Replace unused variables by _ *)
@@ -593,7 +611,9 @@ let dump_unused_vars a =
        if def' == def && t' == t then a else MLparray(t',def')
 
     | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
-    | MLuint _ | MLfloat _ | MLstring _ -> a
+    | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
+    | MLword128 _ | MLword256 _
+    | MLfloat _ | MLstring _ -> a
 
     and ren_branch env ((ids,p,b) as tr) =
       let occs = List.map (fun _ -> ref false) ids in
@@ -1428,7 +1448,9 @@ let rec ml_size = function
   | MLmagic t -> ml_size t
   | MLparray(t,def) -> ml_size_array t + ml_size def
   | MLglob _ | MLrel _ | MLexn _ | MLdummy _ | MLaxiom _
-  | MLuint _ | MLfloat _ | MLstring _ -> 0
+  | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
+  | MLword128 _ | MLword256 _
+  | MLfloat _ | MLstring _ -> 0
 
 and ml_size_list l = List.fold_left (fun a t -> a + ml_size t) 0 l
 
@@ -1575,4 +1597,3 @@ let inline table r t =
      || (lang () != Haskell &&
          (is_projection table r || is_recursor table r ||
           manual_inline r || inline_test r t)))
-

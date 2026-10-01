@@ -28,6 +28,36 @@ let add_retroknowledge retro action =
          | None -> { retro with retro_int63 = Some c }
          | Some c' -> check_same_types typ c c'; retro)
 
+      | PT_word8 ->
+        (match retro.retro_word8 with
+         | None -> { retro with retro_word8 = Some c }
+         | Some c' -> check_same_types typ c c'; retro)
+
+      | PT_word16 ->
+        (match retro.retro_word16 with
+         | None -> { retro with retro_word16 = Some c }
+         | Some c' -> check_same_types typ c c'; retro)
+
+      | PT_word32 ->
+        (match retro.retro_word32 with
+         | None -> { retro with retro_word32 = Some c }
+         | Some c' -> check_same_types typ c c'; retro)
+
+      | PT_word64 ->
+        (match retro.retro_word64 with
+         | None -> { retro with retro_word64 = Some c }
+         | Some c' -> check_same_types typ c c'; retro)
+
+      | PT_word128 ->
+        (match retro.retro_word128 with
+         | None -> { retro with retro_word128 = Some c }
+         | Some c' -> check_same_types typ c c'; retro)
+
+      | PT_word256 ->
+        (match retro.retro_word256 with
+         | None -> { retro with retro_word256 = Some c }
+         | Some c' -> check_same_types typ c c'; retro)
+
       | PT_float64 ->
         (match retro.retro_float64 with
          | None -> { retro with retro_float64 = Some c }
@@ -152,10 +182,22 @@ module type RedNativeEntries =
 
     val get : args -> int -> elem
     val get_int : evd -> elem -> Uint63.t
+    val get_word8 : evd -> elem -> Primitive_words_runtime.Word8.t
+    val get_word16 : evd -> elem -> Primitive_words_runtime.Word16.t
+    val get_word32 : evd -> elem -> Primitive_words_runtime.Word32.t
+    val get_word64 : evd -> elem -> Primitive_words_runtime.Word64.t
+    val get_word128 : evd -> elem -> Primitive_words_runtime.Word128.t
+    val get_word256 : evd -> elem -> Primitive_words_runtime.Word256.t
     val get_float : evd -> elem -> Float64.t
     val get_string : evd -> elem -> Pstring.t
     val get_parray : evd -> elem -> elem Parray.t
     val mkInt : env -> Uint63.t -> elem
+    val mkWord8 : env -> Primitive_words_runtime.Word8.t -> elem
+    val mkWord16 : env -> Primitive_words_runtime.Word16.t -> elem
+    val mkWord32 : env -> Primitive_words_runtime.Word32.t -> elem
+    val mkWord64 : env -> Primitive_words_runtime.Word64.t -> elem
+    val mkWord128 : env -> Primitive_words_runtime.Word128.t -> elem
+    val mkWord256 : env -> Primitive_words_runtime.Word256.t -> elem
     val mkFloat : env -> Float64.t -> elem
     val mkString : env -> Pstring.t -> elem
     val mkBool : env -> bool -> elem
@@ -201,6 +243,30 @@ struct
   type evd = E.evd
   type uinstance = E.uinstance
 
+  module type Word_runtime = sig
+    type t
+    val neg : t -> t
+    val add : t -> t -> t
+    val sub : t -> t -> t
+    val mul : t -> t -> t
+    val logand : t -> t -> t
+    val logor : t -> t -> t
+    val logxor : t -> t -> t
+    val lognot : t -> t
+    val equal : t -> t -> bool
+    val ltb_unsigned : t -> t -> bool
+    val leb_unsigned : t -> t -> bool
+    val ltb_signed : t -> t -> bool
+    val leb_signed : t -> t -> bool
+    val shift_left : t -> t -> t
+    val shift_right_logical : t -> t -> t
+    val shift_right_arithmetic : t -> t -> t
+    val divu_total : t -> t -> t
+    val modu_total : t -> t -> t
+    val divs_total : t -> t -> t
+    val rems_total : t -> t -> t
+  end
+
   let get_int evd args i = E.get_int evd (E.get args i)
 
   let get_int1 evd args = get_int evd args 0
@@ -209,6 +275,41 @@ struct
 
   let get_int3 evd args =
     get_int evd args 0, get_int evd args 1, get_int evd args 2
+
+  let get_word64 evd args i = E.get_word64 evd (E.get args i)
+
+  let get_word8 evd args i = E.get_word8 evd (E.get args i)
+  let get_word16 evd args i = E.get_word16 evd (E.get args i)
+  let get_word32 evd args i = E.get_word32 evd (E.get args i)
+  let get_word128 evd args i = E.get_word128 evd (E.get args i)
+  let get_word256 evd args i = E.get_word256 evd (E.get args i)
+
+  let reduce_word (type a) env evd args op
+      (get : evd -> args -> int -> a) (mk : env -> a -> E.elem)
+      (module W : Word_runtime with type t = a) =
+    let x () = get evd args 0 in
+    let y () = get evd args 1 in
+    match op with
+    | CPrimitives.Wneg -> mk env (W.neg (x ()))
+    | Wadd -> mk env (W.add (x ()) (y ()))
+    | Wsub -> mk env (W.sub (x ()) (y ()))
+    | Wmul -> mk env (W.mul (x ()) (y ()))
+    | Wland -> mk env (W.logand (x ()) (y ()))
+    | Wlor -> mk env (W.logor (x ()) (y ()))
+    | Wlxor -> mk env (W.logxor (x ()) (y ()))
+    | Wlnot -> mk env (W.lognot (x ()))
+    | Weq -> E.mkBool env (W.equal (x ()) (y ()))
+    | Wltu -> E.mkBool env (W.ltb_unsigned (x ()) (y ()))
+    | Wleu -> E.mkBool env (W.leb_unsigned (x ()) (y ()))
+    | Wlts -> E.mkBool env (W.ltb_signed (x ()) (y ()))
+    | Wles -> E.mkBool env (W.leb_signed (x ()) (y ()))
+    | Wlsl -> mk env (W.shift_left (x ()) (y ()))
+    | Wlsr -> mk env (W.shift_right_logical (x ()) (y ()))
+    | Wasr -> mk env (W.shift_right_arithmetic (x ()) (y ()))
+    | Wdivu -> mk env (W.divu_total (x ()) (y ()))
+    | Wmodu -> mk env (W.modu_total (x ()) (y ()))
+    | Wdivs -> mk env (W.divs_total (x ()) (y ()))
+    | Wrems -> mk env (W.rems_total (x ()) (y ()))
 
   let get_float evd args i = E.get_float evd (E.get args i)
 
@@ -315,6 +416,39 @@ struct
         | x when x < 0 ->  E.mkLt env
         | 0 -> E.mkEq env
         | _ -> E.mkGt env
+      end
+    | Word (width, op) ->
+      begin match width with
+      | Word8 -> reduce_word env evd args op get_word8 E.mkWord8
+          (module Primitive_words_runtime.Word8)
+      | Word16 -> reduce_word env evd args op get_word16 E.mkWord16
+          (module Primitive_words_runtime.Word16)
+      | Word32 -> reduce_word env evd args op get_word32 E.mkWord32
+          (module Primitive_words_runtime.Word32)
+      | Word64 ->
+        let module W = struct
+          include Primitive_words_runtime.Word64
+          let shift_left = shift_left_word
+          let shift_right_logical = shift_right_logical_word
+          let shift_right_arithmetic = shift_right_arithmetic_word
+        end in
+        reduce_word env evd args op get_word64 E.mkWord64 (module W)
+      | Word128 ->
+        let module W = struct
+          include Primitive_words_runtime.Word128
+          let shift_left = shift_left_word
+          let shift_right_logical = shift_right_logical_word
+          let shift_right_arithmetic = shift_right_arithmetic_word
+        end in
+        reduce_word env evd args op get_word128 E.mkWord128 (module W)
+      | Word256 ->
+        let module W = struct
+          include Primitive_words_runtime.Word256
+          let shift_left = shift_left_word
+          let shift_right_logical = shift_right_logical_word
+          let shift_right_arithmetic = shift_right_arithmetic_word
+        end in
+        reduce_word env evd args op get_word256 E.mkWord256 (module W)
       end
     | Float64opp ->
       let f = get_float1 evd args in E.mkFloat env (Float64.opp f)

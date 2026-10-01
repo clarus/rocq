@@ -558,6 +558,7 @@ let get_caml_prim = let open CPrimitives in function
   | Stringsub -> Some CAML_Stringsub
   | Stringcat -> Some CAML_Stringcat
   | Stringcompare -> Some CAML_Stringcompare
+  | Word (width, op) -> Some (CAML_Word (width, op))
   | _ -> None
 
 (* sz is the size of the local stack *)
@@ -571,6 +572,15 @@ let rec compile_lam env cenv lam sz cont =
   | Lval v -> compile_structured_constant cenv (Const_val (get_lval v)) sz cont
 
   | Luint i -> compile_structured_constant cenv (Const_uint i) sz cont
+
+  | Lword8 i -> compile_structured_constant cenv (Const_word8 i) sz cont
+  | Lword16 i -> compile_structured_constant cenv (Const_word16 i) sz cont
+  | Lword32 i -> compile_structured_constant cenv (Const_word32 i) sz cont
+  | Lword64 i -> compile_structured_constant cenv (Const_word64 i) sz cont
+
+  | Lword128 i -> compile_structured_constant cenv (Const_word128 i) sz cont
+
+  | Lword256 i -> compile_structured_constant cenv (Const_word256 i) sz cont
 
   | Lfloat f -> compile_structured_constant cenv (Const_float f) sz cont
 

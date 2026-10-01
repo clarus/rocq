@@ -30,11 +30,11 @@ module NamedDecl = Context.Named.Declaration
 
 let e_whd_all env sigma t = match EConstr.kind sigma t with
 | Sort _ | Meta _ | Ind _ | Construct _ | Prod _| Lambda _ | Fix _
-| CoFix _ | Int _ | Float _ | String _ | Array _ as kind ->
+| CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ as kind ->
   EConstr.of_kind kind (* ensure head evar normalization *)
 | App (c, _) as kind ->
   begin match EConstr.kind sigma c with
-  | Ind _ | Construct _ | Meta _ | Int _ | Float _ | String _ | Array _ -> EConstr.of_kind kind
+  | Ind _ | Construct _ | Meta _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> EConstr.of_kind kind
   | Sort _ | Rel _ | Var _ | Evar _ | Cast _ | Prod _ | Lambda _ | LetIn _ | App _
   | Const _ | Case _ | Fix _ | CoFix _ | Proj _ ->
     Reductionops.clos_whd_flags RedFlags.all env sigma t
@@ -219,6 +219,12 @@ and nf_whd env sigma whd typ =
       let args = nf_bargs env sigma b ofs ctyp in
       mkApp(capp,args)
   | Vint64 i -> i |> Uint63.of_int64 |> mkInt
+  | Vword8 i -> mkWord8 i
+  | Vword16 i -> mkWord16 i
+  | Vword32 i -> mkWord32 i
+  | Vword64 i -> mkWord64 i
+  | Vword128 i -> mkWord128 i
+  | Vword256 i -> mkWord256 i
   | Vfloat64 f -> f |> Float64.of_float |> mkFloat
   | Vstring s -> s |> mkString
   | Varray t -> nf_array env sigma t typ

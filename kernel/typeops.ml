@@ -265,6 +265,14 @@ let type_of_prim_type _env u (type a) (prim : a CPrimitives.prim_type) = match p
   | CPrimitives.PT_int63 ->
     assert (UVars.Instance.is_empty u);
     Constr.mkSet
+  | CPrimitives.PT_word8
+  | CPrimitives.PT_word16
+  | CPrimitives.PT_word32
+  | CPrimitives.PT_word64
+  | CPrimitives.PT_word128
+  | CPrimitives.PT_word256 ->
+    assert (UVars.Instance.is_empty u);
+    Constr.mkSet
   | CPrimitives.PT_float64 ->
     assert (UVars.Instance.is_empty u);
     Constr.mkSet
@@ -283,6 +291,36 @@ let type_of_int env =
   match (Environ.retroknowledge env).Retroknowledge.retro_int63 with
   | Some c -> UnsafeMonomorphic.mkConst c
   | None -> CErrors.user_err Pp.(str"The type int must be registered before this construction can be typechecked.")
+
+let type_of_word64 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word64 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word64 must be registered before this construction can be typechecked.")
+
+let type_of_word8 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word8 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word8 must be registered before this construction can be typechecked.")
+
+let type_of_word16 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word16 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word16 must be registered before this construction can be typechecked.")
+
+let type_of_word32 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word32 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word32 must be registered before this construction can be typechecked.")
+
+let type_of_word128 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word128 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word128 must be registered before this construction can be typechecked.")
+
+let type_of_word256 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word256 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word256 must be registered before this construction can be typechecked.")
 
 let type_of_float env =
   match (Environ.retroknowledge env).Retroknowledge.retro_float64 with
@@ -777,6 +815,12 @@ and execute_aux tbl env cstr =
 
     (* Primitive types *)
     | Int _ -> type_of_int env
+    | Word8 _ -> type_of_word8 env
+    | Word16 _ -> type_of_word16 env
+    | Word32 _ -> type_of_word32 env
+    | Word64 _ -> type_of_word64 env
+    | Word128 _ -> type_of_word128 env
+    | Word256 _ -> type_of_word256 env
     | Float _ -> type_of_float env
     | String _ -> type_of_string env
     | Array(u,t,def,ty) ->
@@ -902,6 +946,12 @@ let type_of_prim_const env _u c =
 let type_of_prim env u t =
   let module UM = UnsafeMonomorphic in
   let int_ty () = type_of_int env in
+  let word8_ty () = type_of_word8 env in
+  let word16_ty () = type_of_word16 env in
+  let word32_ty () = type_of_word32 env in
+  let word64_ty () = type_of_word64 env in
+  let word128_ty () = type_of_word128 env in
+  let word256_ty () = type_of_word256 env in
   let float_ty () = type_of_float env in
   let string_ty () = type_of_string env in
   let array_ty u a = mkApp(type_of_array env u, [|a|]) in
@@ -938,6 +988,12 @@ let type_of_prim env u t =
   let open CPrimitives in
   let tr_prim_type (tr_type : ind_or_type -> constr) (type a) (ty : a prim_type) (t : a) = match ty with
     | PT_int63 -> int_ty t
+    | PT_word8 -> word8_ty t
+    | PT_word16 -> word16_ty t
+    | PT_word32 -> word32_ty t
+    | PT_word64 -> word64_ty t
+    | PT_word128 -> word128_ty t
+    | PT_word256 -> word256_ty t
     | PT_float64 -> float_ty t
     | PT_string -> string_ty t
     | PT_array -> array_ty (fst t) (tr_type (snd t))

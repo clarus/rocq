@@ -575,6 +575,8 @@ let () =
     |]
   | Int n ->
     v_blk 17 [|Tac2ffi.of_uint63 n|]
+  | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ ->
+    CErrors.user_err Pp.(str "Ltac2 reflection of primitive words is unsupported")
   | Float f ->
     v_blk 18 [|Tac2ffi.of_float f|]
   | String s ->

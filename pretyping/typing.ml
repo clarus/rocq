@@ -444,6 +444,24 @@ let type_of_int env = EConstr.of_constr (Typeops.type_of_int env)
 let judge_of_int env v =
   { uj_val = mkInt v; uj_type = type_of_int env }
 
+let judge_of_word8 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord8 v); uj_type = EConstr.of_constr (Typeops.type_of_word8 env) }
+let judge_of_word16 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord16 v); uj_type = EConstr.of_constr (Typeops.type_of_word16 env) }
+let judge_of_word32 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord32 v); uj_type = EConstr.of_constr (Typeops.type_of_word32 env) }
+
+let type_of_word64 env = EConstr.of_constr (Typeops.type_of_word64 env)
+
+let judge_of_word64 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord64 v); uj_type = type_of_word64 env }
+
+let judge_of_word128 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord128 v); uj_type = EConstr.of_constr (Typeops.type_of_word128 env) }
+
+let judge_of_word256 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord256 v); uj_type = EConstr.of_constr (Typeops.type_of_word256 env) }
+
 let type_of_float env = EConstr.of_constr (Typeops.type_of_float env)
 
 let judge_of_float env v =
@@ -643,6 +661,16 @@ let rec execute env sigma cstr =
     | Int i ->
         sigma, judge_of_int env i
 
+    | Word8 i -> sigma, judge_of_word8 env i
+    | Word16 i -> sigma, judge_of_word16 env i
+    | Word32 i -> sigma, judge_of_word32 env i
+
+    | Word64 i ->
+        sigma, judge_of_word64 env i
+
+    | Word128 i -> sigma, judge_of_word128 env i
+    | Word256 i -> sigma, judge_of_word256 env i
+
     | Float f ->
         sigma, judge_of_float env f
 
@@ -773,7 +801,7 @@ let rec recheck_against env sigma good c =
     match kind sigma good, kind sigma c with
     (* No subterms *)
     | _, (Meta _ | Rel _ | Var _ | Const _ | Ind _ | Construct _
-         | Sort _ | Int _ | Float _ | String _) ->
+         | Sort _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) ->
       default ()
 
     (* Evar (todo deal with Evar differently??? execute recurses on its type)

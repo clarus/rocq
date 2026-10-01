@@ -109,6 +109,12 @@ type ('constr, 'types, 'sort, 'univs, 'r) kind_of_term =
   | CoFix     of ('constr, 'types, 'r) pcofixpoint
   | Proj      of Projection.t * 'r * 'constr
   | Int       of Uint63.t
+  | Word8     of Primitive_words_runtime.Word8.t
+  | Word16    of Primitive_words_runtime.Word16.t
+  | Word32    of Primitive_words_runtime.Word32.t
+  | Word64    of Primitive_words_runtime.Word64.t
+  | Word128   of Primitive_words_runtime.Word128.t
+  | Word256   of Primitive_words_runtime.Word256.t
   | Float     of Float64.t
   | String    of Pstring.t
   | Array     of 'univs * 'constr array * 'constr * 'types
@@ -458,6 +464,14 @@ let mkRef (gr,u) = let open GlobRef in match gr with
 (* Constructs a primitive integer *)
 let mkInt i = of_kind @@ Int i
 
+(* Constructs width-distinct primitive words. *)
+let mkWord8 i = of_kind @@ Word8 i
+let mkWord16 i = of_kind @@ Word16 i
+let mkWord32 i = of_kind @@ Word32 i
+let mkWord64 i = of_kind @@ Word64 i
+let mkWord128 i = of_kind @@ Word128 i
+let mkWord256 i = of_kind @@ Word256 i
+
 (* Constructs an array *)
 let mkArray (u,t,def,ty) = of_kind @@ Array (u,t,def,ty)
 
@@ -488,7 +502,7 @@ let fold_invert f acc = function
 
 let fold f acc c = match kind c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> acc
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> acc
   | Cast (c,_,t) -> f (f acc c) t
   | Prod (_,t,c) -> f (f acc t) c
   | Lambda (_,t,c) -> f (f acc t) c
@@ -516,7 +530,7 @@ let iter_invert f = function
 
 let iter f c = match kind c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> ()
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> ()
   | Cast (c,_,t) -> f c; f t
   | Prod (_,t,c) -> f t; f c
   | Lambda (_,t,c) -> f t; f c
@@ -538,7 +552,7 @@ let iter f c = match kind c with
 
 let iter_with_binders g f n c = match kind c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> ()
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> ()
   | Cast (c,_,t) -> f n c; f n t
   | Prod (_,t,c) -> f n t; f (g n) c
   | Lambda (_,t,c) -> f n t; f (g n) c
@@ -571,7 +585,7 @@ let iter_with_binders g f n c = match kind c with
 let fold_constr_with_binders g f n acc c =
   match kind c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> acc
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> acc
   | Cast (c,_, t) -> f n (f n acc c) t
   | Prod (_na,t,c) -> f (g  n) (f n acc t) c
   | Lambda (_na,t,c) -> f (g  n) (f n acc t) c
@@ -635,7 +649,7 @@ let map_invert f = function
 
 let map f c = match kind c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> c
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> c
   | Cast (b,k,t) ->
       let b' = f b in
       let t' = f t in
@@ -720,7 +734,7 @@ let fold_map_return_predicate f accu (p,r as v) =
 
 let fold_map f accu c = match kind c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> accu, c
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> accu, c
   | Cast (b,k,t) ->
       let accu, b' = f accu b in
       let accu, t' = f accu t in
@@ -788,7 +802,7 @@ let fold_map f accu c = match kind c with
 
 let map_with_binders g f l c0 = match kind c0 with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> c0
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> c0
   | Cast (c, k, t) ->
     let c' = f l c in
     let t' = f l t in
@@ -905,6 +919,12 @@ let compare_head_gen_leq_with kind1 kind2 leq_universes leq_sorts eq_evars eq le
   | Meta m1, Meta m2 -> Int.equal m1 m2
   | Var id1, Var id2 -> Id.equal id1 id2
   | Int i1, Int i2 -> Uint63.equal i1 i2
+  | Word8 i1, Word8 i2 -> Primitive_words_runtime.Word8.equal i1 i2
+  | Word16 i1, Word16 i2 -> Primitive_words_runtime.Word16.equal i1 i2
+  | Word32 i1, Word32 i2 -> Primitive_words_runtime.Word32.equal i1 i2
+  | Word64 i1, Word64 i2 -> Primitive_words_runtime.Word64.equal i1 i2
+  | Word128 i1, Word128 i2 -> Primitive_words_runtime.Word128.equal i1 i2
+  | Word256 i1, Word256 i2 -> Primitive_words_runtime.Word256.equal i1 i2
   | Float f1, Float f2 -> Float64.equal f1 f2
   | String s1, String s2 -> Pstring.equal s1 s2
   | Sort s1, Sort s2 -> leq_sorts s1 s2
@@ -942,7 +962,7 @@ let compare_head_gen_leq_with kind1 kind2 leq_universes leq_sorts eq_evars eq le
     eq 0 def1 def2 && eq 0 ty1 ty2
   | (Rel _ | Meta _ | Var _ | Sort _ | Prod _ | Lambda _ | LetIn _ | App _
     | Proj _ | Evar _ | Const _ | Ind _ | Construct _ | Case _ | Fix _
-    | CoFix _ | Int _ | Float _ | String _ | Array _), _ -> false
+    | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _), _ -> false
 
 (* [compare_head_gen_leq u s eq leq c1 c2] compare [c1] and [c2] using [eq] to compare
    the immediate subterms of [c1] of [c2] for conversion if needed, [leq] for cumulativity,
@@ -1105,13 +1125,19 @@ let hasheq_kind t1 t2 =
       && array_eqeq tl1 tl2
       && array_eqeq bl1 bl2
     | Int i1, Int i2 -> i1 == i2
+    | Word8 i1, Word8 i2 -> Primitive_words_runtime.Word8.equal i1 i2
+    | Word16 i1, Word16 i2 -> Primitive_words_runtime.Word16.equal i1 i2
+    | Word32 i1, Word32 i2 -> Primitive_words_runtime.Word32.equal i1 i2
+    | Word64 i1, Word64 i2 -> Primitive_words_runtime.Word64.equal i1 i2
+    | Word128 i1, Word128 i2 -> Primitive_words_runtime.Word128.equal i1 i2
+    | Word256 i1, Word256 i2 -> Primitive_words_runtime.Word256.equal i1 i2
     | Float f1, Float f2 -> Float64.equal f1 f2
     | String s1, String s2 -> Pstring.equal s1 s2
     | Array(u1,t1,def1,ty1), Array(u2,t2,def2,ty2) ->
       u1 == u2 && def1 == def2 && ty1 == ty2 && array_eqeq t1 t2
     | (Rel _ | Meta _ | Var _ | Sort _ | Cast _ | Prod _ | Lambda _ | LetIn _
       | App _ | Proj _ | Evar _ | Const _ | Ind _ | Construct _ | Case _
-      | Fix _ | CoFix _ | Int _ | Float _ | String _ | Array _), _ -> false
+      | Fix _ | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _), _ -> false
 
 let hasheq t1 t2 = hasheq_kind (kind t1) (kind t2)
 
@@ -1301,8 +1327,20 @@ let rec hash_term (t : t) : int * (constr,constr,_,_,_) kind_of_term =
   | Int i as t ->
     let (h,l) = Uint63.to_int2 i in
     (combinesmall 18 (combine h l), t)
-  | Float f as t -> (combinesmall 19 (Float64.hash f), t)
-  | String s as t -> (combinesmall 20 (Pstring.hash s), t)
+  | Word8 i as t ->
+    (combinesmall 19 (Primitive_words_runtime.Word8.hash i), t)
+  | Word16 i as t ->
+    (combinesmall 20 (Primitive_words_runtime.Word16.hash i), t)
+  | Word32 i as t ->
+    (combinesmall 21 (Primitive_words_runtime.Word32.hash i), t)
+  | Word64 i as t ->
+    (combinesmall 22 (Primitive_words_runtime.Word64.hash i), t)
+  | Word128 i as t ->
+    (combinesmall 23 (Primitive_words_runtime.Word128.hash i), t)
+  | Word256 i as t ->
+    (combinesmall 24 (Primitive_words_runtime.Word256.hash i), t)
+  | Float f as t -> (combinesmall 25 (Float64.hash f), t)
+  | String s as t -> (combinesmall 26 (Pstring.hash s), t)
   | Array (u,ar,def,ty) ->
     let _,car,_,_ = destArray (self t) in
     let hu, u = Instance.hcons u in
@@ -1310,7 +1348,7 @@ let rec hash_term (t : t) : int * (constr,constr,_,_,_) kind_of_term =
     let hdef, def = sh_rec def in
     let hty, ty = sh_rec ty in
     let h = combine4 hu ht hdef hty in
-    (combinesmall 21 h, Array(u,t,def,ty))
+    (combinesmall 27 h, Array(u,t,def,ty))
 
 and sh_invert civ iv = match civ, iv with
   | NoInvert, NoInvert -> 0, NoInvert
@@ -1459,6 +1497,20 @@ let rec debug_print c =
            cut() ++ str":=" ++ debug_print bd) (Array.to_list fixl)) ++
          str"}")
   | Int i -> str"Int("++str (Uint63.to_string i) ++ str")"
+  | Word8 i -> str (Printf.sprintf "Word8(0x%02x)" (Primitive_words_runtime.Word8.to_int i))
+  | Word16 i -> str (Printf.sprintf "Word16(0x%04x)" (Primitive_words_runtime.Word16.to_int i))
+  | Word32 i -> str (Printf.sprintf "Word32(0x%08lx)" (Primitive_words_runtime.Word32.to_int32 i))
+  | Word64 i ->
+    str (Printf.sprintf "Word64(0x%016Lx)"
+           (Primitive_words_runtime.Word64.to_int64 i))
+  | Word128 i ->
+    let low, high = Primitive_words_runtime.Word128.to_limbs i in
+    str (Printf.sprintf "Word128(0x%016Lx%016Lx)" high low)
+  | Word256 i ->
+    let limb0, limb1, limb2, limb3 =
+      Primitive_words_runtime.Word256.to_limbs i in
+    str (Printf.sprintf "Word256(0x%016Lx%016Lx%016Lx%016Lx)"
+           limb3 limb2 limb1 limb0)
   | Float i -> str"Float("++str (Float64.to_string i) ++ str")"
   | String s -> str"String("++str (Printf.sprintf "%S" (Pstring.to_string s)) ++ str")"
   | Array(u,t,def,ty) -> str"Array(" ++ prlist_with_sep pr_comma debug_print (Array.to_list t) ++ str" | "

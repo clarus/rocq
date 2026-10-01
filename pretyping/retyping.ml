@@ -274,6 +274,12 @@ let retype ?metas ?(polyprop=true) sigma =
     | Cast (c,_, t) -> t
     | Sort _ | Prod _ -> mkSort (sort_of env cstr)
     | Int _ -> EConstr.of_constr (Typeops.type_of_int env)
+    | Word8 _ -> EConstr.of_constr (Typeops.type_of_word8 env)
+    | Word16 _ -> EConstr.of_constr (Typeops.type_of_word16 env)
+    | Word32 _ -> EConstr.of_constr (Typeops.type_of_word32 env)
+    | Word64 _ -> EConstr.of_constr (Typeops.type_of_word64 env)
+    | Word128 _ -> EConstr.of_constr (Typeops.type_of_word128 env)
+    | Word256 _ -> EConstr.of_constr (Typeops.type_of_word256 env)
     | Float _ -> EConstr.of_constr (Typeops.type_of_float env)
     | String _ -> EConstr.of_constr (Typeops.type_of_string env)
     | Array(u, _, _, ty) ->
@@ -458,7 +464,7 @@ let relevance_of_term env sigma c =
       | Evar (evk, _) ->
           let evi = Evd.find_undefined sigma evk in
           Evd.evar_relevance evi
-      | Int _ | Float _ | String _ | Array _ -> ERelevance.relevant
+      | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> ERelevance.relevant
       | Meta _ -> ERelevance.relevant
     in
     aux Range.empty c

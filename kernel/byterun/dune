@@ -4,7 +4,13 @@
  (public_name rocq-runtime.vm)
  (foreign_stubs
   (language c)
-  (names rocq_fix_code rocq_float64 rocq_memory rocq_values rocq_interp)
+  (names
+   rocq_fix_code
+   rocq_float64
+   rocq_memory
+   rocq_values
+   rocq_interp
+   rocq_primitive_words_runtime)
   (flags :standard (:include %{project_root}/config/dune.c_flags))))
 
 (rule

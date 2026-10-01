@@ -70,11 +70,20 @@ type number_ty =
 type pos_neg_int63_ty =
   { pos_neg_int63_ty : Names.inductive }
 
+type pos_neg_word64_ty =
+  { pos_neg_word64_ty : Names.inductive }
+
 type target_kind =
   | Int of int_ty (* Corelib.Init.Number.int + uint *)
   | UInt of int_ty (* Corelib.Init.Number.uint *)
   | Z of z_pos_ty (* Corelib.Numbers.BinNums.Z and positive *)
   | Int63 of pos_neg_int63_ty (* Corelib.Numbers.Cyclic.Int63.PrimInt63.pos_neg_int63 *)
+  | Word8 of pos_neg_word64_ty
+  | Word16 of pos_neg_word64_ty
+  | Word32 of pos_neg_word64_ty
+  | Word64 of pos_neg_word64_ty (* Corelib.Numbers.Primitive.Word64.pos_neg_word64 *)
+  | Word128 of pos_neg_word64_ty
+  | Word256 of pos_neg_word64_ty
   | Float64 (* Corelib.Floats.PrimFloat.float *)
   | Number of number_ty (* Corelib.Init.Number.number + uint + int *)
 

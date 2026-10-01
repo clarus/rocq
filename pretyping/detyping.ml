@@ -915,6 +915,12 @@ and detype_r d flags avoid env sigma t =
     | Fix (nvn,recdef) -> detype_fix (detype d) flags avoid env sigma nvn recdef
     | CoFix (n,recdef) -> detype_cofix (detype d) flags avoid env sigma n recdef
     | Int i -> GInt i
+    | Word8 i -> GWord8 i
+    | Word16 i -> GWord16 i
+    | Word32 i -> GWord32 i
+    | Word64 i -> GWord64 i
+    | Word128 i -> GWord128 i
+    | Word256 i -> GWord256 i
     | Float f -> GFloat f
     | String s -> GString s
     | Array(u,t,def,ty) ->
@@ -1109,6 +1115,7 @@ let rec subst_glob_constr env subst = DAst.map (function
   | GVar _
   | GEvar _
   | GInt _
+  | GWord8 _ | GWord16 _ | GWord32 _ | GWord64 _ | GWord128 _ | GWord256 _
   | GFloat _
   | GString _
   | GPatVar _ as raw -> raw

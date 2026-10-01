@@ -35,6 +35,7 @@ type caml_prim =
 | CAML_Stringsub
 | CAML_Stringcat
 | CAML_Stringcompare
+| CAML_Word of CPrimitives.word_width * CPrimitives.word_op
 
 type instruction =
   | Klabel of Label.t

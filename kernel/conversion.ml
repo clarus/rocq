@@ -317,6 +317,12 @@ let rec compare_under e1 c1 e2 c2 =
   | Meta m1, Meta m2 -> Int.equal m1 m2
   | Var id1, Var id2 -> Id.equal id1 id2
   | Int i1, Int i2 -> Uint63.equal i1 i2
+  | Word8 i1, Word8 i2 -> Primitive_words_runtime.Word8.equal i1 i2
+  | Word16 i1, Word16 i2 -> Primitive_words_runtime.Word16.equal i1 i2
+  | Word32 i1, Word32 i2 -> Primitive_words_runtime.Word32.equal i1 i2
+  | Word64 i1, Word64 i2 -> Primitive_words_runtime.Word64.equal i1 i2
+  | Word128 i1, Word128 i2 -> Primitive_words_runtime.Word128.equal i1 i2
+  | Word256 i1, Word256 i2 -> Primitive_words_runtime.Word256.equal i1 i2
   | Float f1, Float f2 -> Float64.equal f1 f2
   | String s1, String s2 -> Pstring.equal s1 s2
   | Sort s1, Sort s2 ->
@@ -357,7 +363,7 @@ let rec compare_under e1 c1 e2 c2 =
     && compare_under e1 ty1 e2 ty2
   | (Rel _ | Meta _ | Var _ | Sort _ | Prod _ | Lambda _ | LetIn _ | App _
     | Proj _ | Evar _ | Const _ | Ind _ | Construct _ | Case _ | Fix _
-    | CoFix _ | Int _ | Float _ | String _ | Array _), _ -> false
+    | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _), _ -> false
 
 
 let rec fast_test lft1 term1 lft2 term2 = match fterm_of term1, fterm_of term2 with
@@ -742,6 +748,36 @@ and eqwhnf cv_pb l2r infos (lft1, (hd1, v1) as appr1) (lft2, (hd2, v2) as appr2)
        if Uint63.equal i1 i2 then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
        else raise NotConvertible
 
+    | FWord8 i1, FWord8 i2 ->
+       if Primitive_words_runtime.Word8.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
+    | FWord16 i1, FWord16 i2 ->
+       if Primitive_words_runtime.Word16.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
+    | FWord32 i1, FWord32 i2 ->
+       if Primitive_words_runtime.Word32.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
+    | FWord64 i1, FWord64 i2 ->
+       if Primitive_words_runtime.Word64.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
+    | FWord128 i1, FWord128 i2 ->
+       if Primitive_words_runtime.Word128.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
+    | FWord256 i1, FWord256 i2 ->
+       if Primitive_words_runtime.Word256.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
     | FFloat f1, FFloat f2 ->
         if Float64.equal f1 f2 then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
         else raise NotConvertible
@@ -811,7 +847,7 @@ and eqwhnf cv_pb l2r infos (lft1, (hd1, v1) as appr1) (lft2, (hd2, v2) as appr2)
        | (FLOCKED,_) | (_,FLOCKED) ) -> assert false
 
      | (FRel _ | FAtom _ | FInd _ | FFix _ | FCoFix _ | FCaseInvert _
-       | FProd _ | FEvar _ | FInt _ | FFloat _ | FString _
+       | FProd _ | FEvar _ | FInt _ | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _ | FFloat _ | FString _
        | FArray _ | FIrrelevant), _ -> raise NotConvertible
 
 and convert_stacks ?(mask = [||]) l2r infos lft1 lft2 stk1 stk2 cuniv =

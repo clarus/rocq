@@ -293,7 +293,7 @@ let map_constr_relevance f c =
   | Rel _ | Var _ | Meta _ | Evar _
   |  Sort _ | Cast _ | App _
   | Const _ | Ind _ | Construct _
-  | Int _ | Float _ | String _ | Array _ -> c
+  | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> c
 
   | Prod (na,x,y) ->
     let na' = map_annot_relevance f na in
@@ -340,7 +340,7 @@ let fold_kind_relevance f acc c =
   | Rel _ | Var _ | Meta _ | Evar _
   |  Sort _ | Cast _ | App _
   | Const _ | Ind _ | Construct _
-  | Int _ | Float _ | String _ | Array _ -> acc
+  | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> acc
 
   | Prod (na,_,_) | Lambda (na,_,_) | LetIn (na,_,_,_) ->
     fold_annot_relevance f acc na

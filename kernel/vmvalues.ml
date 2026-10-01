@@ -55,6 +55,12 @@ type structured_constant =
   | Const_univ_instance of UVars.Instance.t
   | Const_val of structured_values
   | Const_uint of Uint63.t
+  | Const_word8 of Primitive_words_runtime.Word8.t
+  | Const_word16 of Primitive_words_runtime.Word16.t
+  | Const_word32 of Primitive_words_runtime.Word32.t
+  | Const_word64 of Primitive_words_runtime.Word64.t
+  | Const_word128 of Primitive_words_runtime.Word128.t
+  | Const_word256 of Primitive_words_runtime.Word256.t
   | Const_float of Float64.t
   | Const_string of Pstring.t
 
@@ -75,7 +81,37 @@ let rec eq_structured_values v1 v2 =
     if Int.equal t1 t2 &&
        Int.equal (Obj.size o1) (Obj.size o2)
     then if Int.equal t1 Obj.custom_tag
-      then Int64.equal (Obj.magic v1 : int64) (Obj.magic v2 : int64)
+      then
+        let check is_value equal =
+          let w1 = is_value o1 and w2 = is_value o2 in
+          if w1 && w2 then Some (equal (Obj.magic v1) (Obj.magic v2))
+          else if w1 || w2 then Some false else None
+        in
+        begin match check Primitive_words_runtime.Word8.is_runtime_value
+          Primitive_words_runtime.Word8.equal with
+        | Some b -> b
+        | None -> begin match check Primitive_words_runtime.Word16.is_runtime_value
+            Primitive_words_runtime.Word16.equal with
+          | Some b -> b
+          | None -> begin match check Primitive_words_runtime.Word32.is_runtime_value
+              Primitive_words_runtime.Word32.equal with
+            | Some b -> b
+            | None -> begin match check Primitive_words_runtime.Word64.is_runtime_value
+                Primitive_words_runtime.Word64.equal with
+              | Some b -> b
+              | None -> begin match check Primitive_words_runtime.Word128.is_runtime_value
+                  Primitive_words_runtime.Word128.equal with
+                | Some b -> b
+                | None -> begin match check Primitive_words_runtime.Word256.is_runtime_value
+                    Primitive_words_runtime.Word256.equal with
+                  | Some b -> b
+                  | None -> Int64.equal (Obj.magic v1 : int64) (Obj.magic v2 : int64)
+                  end
+                end
+              end
+            end
+          end
+        end
     else if Int.equal t1 Obj.double_tag
       then Float64.(equal (of_float (Obj.magic v1)) (of_float (Obj.magic v2)))
     else if Int.equal t1 Obj.string_tag
@@ -112,6 +148,21 @@ let eq_structured_constant c1 c2 = match c1, c2 with
 | Const_val _, _ -> false
 | Const_uint i1, Const_uint i2 -> Uint63.equal i1 i2
 | Const_uint _, _ -> false
+| Const_word8 i1, Const_word8 i2 -> Primitive_words_runtime.Word8.equal i1 i2
+| Const_word8 _, _ -> false
+| Const_word16 i1, Const_word16 i2 -> Primitive_words_runtime.Word16.equal i1 i2
+| Const_word16 _, _ -> false
+| Const_word32 i1, Const_word32 i2 -> Primitive_words_runtime.Word32.equal i1 i2
+| Const_word32 _, _ -> false
+| Const_word64 i1, Const_word64 i2 ->
+  Primitive_words_runtime.Word64.equal i1 i2
+| Const_word64 _, _ -> false
+| Const_word128 i1, Const_word128 i2 ->
+  Primitive_words_runtime.Word128.equal i1 i2
+| Const_word128 _, _ -> false
+| Const_word256 i1, Const_word256 i2 ->
+  Primitive_words_runtime.Word256.equal i1 i2
+| Const_word256 _, _ -> false
 | Const_float f1, Const_float f2 -> Float64.equal f1 f2
 | Const_float _, _ -> false
 | Const_string s1, Const_string s2 -> Pstring.equal s1 s2
@@ -127,6 +178,12 @@ let hash_structured_constant c =
   | Const_univ_instance u -> combinesmall 5 (UVars.Instance.hash u)
   | Const_val v -> combinesmall 6 (hash_structured_values v)
   | Const_uint i -> combinesmall 7 (Uint63.hash i)
+  | Const_word8 i -> combinesmall 10 (Primitive_words_runtime.Word8.hash i)
+  | Const_word16 i -> combinesmall 11 (Primitive_words_runtime.Word16.hash i)
+  | Const_word32 i -> combinesmall 12 (Primitive_words_runtime.Word32.hash i)
+  | Const_word64 i -> combinesmall 13 (Primitive_words_runtime.Word64.hash i)
+  | Const_word128 i -> combinesmall 14 (Primitive_words_runtime.Word128.hash i)
+  | Const_word256 i -> combinesmall 15 (Primitive_words_runtime.Word256.hash i)
   | Const_float f -> combinesmall 8 (Float64.hash f)
   | Const_string s -> combinesmall 9 (Pstring.hash s)
 
@@ -150,6 +207,20 @@ let pp_struct_const = function
   | Const_univ_instance u -> UVars.Instance.pr Sorts.raw_printer u
   | Const_val _ -> Pp.str "(value)"
   | Const_uint i -> Pp.str (Uint63.to_string i)
+  | Const_word8 i -> Pp.str (Printf.sprintf "0x%02xw8" (Primitive_words_runtime.Word8.to_int i))
+  | Const_word16 i -> Pp.str (Printf.sprintf "0x%04xw16" (Primitive_words_runtime.Word16.to_int i))
+  | Const_word32 i -> Pp.str (Printf.sprintf "0x%08lxw32" (Primitive_words_runtime.Word32.to_int32 i))
+  | Const_word64 i ->
+    Pp.str (Printf.sprintf "0x%016Lxw64"
+      (Primitive_words_runtime.Word64.to_int64 i))
+  | Const_word128 i ->
+    let low, high = Primitive_words_runtime.Word128.to_limbs i in
+    Pp.str (Printf.sprintf "0x%016Lx%016Lxw128" high low)
+  | Const_word256 i ->
+    let limb0, limb1, limb2, limb3 =
+      Primitive_words_runtime.Word256.to_limbs i in
+    Pp.str (Printf.sprintf "0x%016Lx%016Lx%016Lx%016Lxw256"
+      limb3 limb2 limb1 limb0)
   | Const_float f -> Pp.str (Float64.to_string f)
   | Const_string s -> Pp.str (Printf.sprintf "%S" (Pstring.to_string s))
 
@@ -375,6 +446,24 @@ let whd_val (v: values) =
       | VCfix -> Vfix (Obj.obj o, None)
       | VCfix_partial -> Vfix (Obj.obj (Obj.field o 2), Some (Obj.obj o))
       | VCaccu -> Vaccu (Aid (RelKey (int_tcode (fun_code o) 1)), [])
+    else if Int.equal tag Obj.custom_tag &&
+            Primitive_words_runtime.Word8.is_runtime_value o
+    then Vword8 (Obj.magic v)
+    else if Int.equal tag Obj.custom_tag &&
+            Primitive_words_runtime.Word16.is_runtime_value o
+    then Vword16 (Obj.magic v)
+    else if Int.equal tag Obj.custom_tag &&
+            Primitive_words_runtime.Word32.is_runtime_value o
+    then Vword32 (Obj.magic v)
+    else if Int.equal tag Obj.custom_tag &&
+            Primitive_words_runtime.Word64.is_runtime_value o
+    then Vword64 (Obj.magic v)
+    else if Int.equal tag Obj.custom_tag &&
+            Primitive_words_runtime.Word128.is_runtime_value o
+    then Vword128 (Obj.magic v)
+    else if Int.equal tag Obj.custom_tag &&
+            Primitive_words_runtime.Word256.is_runtime_value o
+    then Vword256 (Obj.magic v)
     else if Int.equal tag Obj.custom_tag then Vint64 (Obj.magic v)
     else if Int.equal tag Obj.double_tag then Vfloat64 (Obj.magic v)
     else if Int.equal tag Obj.string_tag then Vstring (Obj.magic v)
@@ -403,6 +492,12 @@ let obj_of_str_const str =
   | Const_univ_instance u -> Obj.repr u
   | Const_val v -> Obj.repr v
   | Const_uint i -> Obj.repr i
+  | Const_word8 i -> Obj.repr i
+  | Const_word16 i -> Obj.repr i
+  | Const_word32 i -> Obj.repr i
+  | Const_word64 i -> Obj.repr i
+  | Const_word128 i -> Obj.repr i
+  | Const_word256 i -> Obj.repr i
   | Const_float f -> Obj.repr f
   | Const_string s -> Obj.repr s
 
@@ -423,6 +518,97 @@ let val_of_atom a = val_of_obj (obj_of_atom a)
 let val_of_int i = (Obj.magic i : values)
 
 let val_of_uint i = (Obj.magic i : structured_values)
+
+let val_of_word8 i = (Obj.magic i : structured_values)
+let val_of_word16 i = (Obj.magic i : structured_values)
+let val_of_word32 i = (Obj.magic i : structured_values)
+
+let val_of_word64 i = (Obj.magic i : structured_values)
+let val_of_word128 i = (Obj.magic i : structured_values)
+let val_of_word256 i = (Obj.magic i : structured_values)
+
+module type Word_runtime = sig
+  type t
+  val neg : t -> t
+  val add : t -> t -> t
+  val sub : t -> t -> t
+  val mul : t -> t -> t
+  val logand : t -> t -> t
+  val logor : t -> t -> t
+  val logxor : t -> t -> t
+  val lognot : t -> t
+  val equal : t -> t -> bool
+  val ltb_unsigned : t -> t -> bool
+  val leb_unsigned : t -> t -> bool
+  val ltb_signed : t -> t -> bool
+  val leb_signed : t -> t -> bool
+  val shift_left : t -> t -> t
+  val shift_right_logical : t -> t -> t
+  val shift_right_arithmetic : t -> t -> t
+  val divu_total : t -> t -> t
+  val modu_total : t -> t -> t
+  val divs_total : t -> t -> t
+  val rems_total : t -> t -> t
+end
+
+let word_prim_of (type a) (module W : Word_runtime with type t = a) =
+  (* VM constructors use Rocq's declaration order: [true] is constructor 0
+     and [false] constructor 1.  OCaml's immediate Boolean representation has
+     the opposite numbering, so Boolean primitive results must be inverted at
+     this callback boundary. *)
+  let vm_bool2 f x y = not (f x y) in
+  let open CPrimitives in function
+  | Wneg -> Obj.magic W.neg
+  | Wadd -> Obj.magic W.add
+  | Wsub -> Obj.magic W.sub
+  | Wmul -> Obj.magic W.mul
+  | Wland -> Obj.magic W.logand
+  | Wlor -> Obj.magic W.logor
+  | Wlxor -> Obj.magic W.logxor
+  | Wlnot -> Obj.magic W.lognot
+  | Weq -> Obj.magic (vm_bool2 W.equal)
+  | Wltu -> Obj.magic (vm_bool2 W.ltb_unsigned)
+  | Wleu -> Obj.magic (vm_bool2 W.leb_unsigned)
+  | Wlts -> Obj.magic (vm_bool2 W.ltb_signed)
+  | Wles -> Obj.magic (vm_bool2 W.leb_signed)
+  | Wlsl -> Obj.magic W.shift_left
+  | Wlsr -> Obj.magic W.shift_right_logical
+  | Wasr -> Obj.magic W.shift_right_arithmetic
+  | Wdivu -> Obj.magic W.divu_total
+  | Wmodu -> Obj.magic W.modu_total
+  | Wdivs -> Obj.magic W.divs_total
+  | Wrems -> Obj.magic W.rems_total
+
+let word_prim width op =
+  let open CPrimitives in
+  match width with
+  | Word8 -> word_prim_of (module Primitive_words_runtime.Word8) op
+  | Word16 -> word_prim_of (module Primitive_words_runtime.Word16) op
+  | Word32 -> word_prim_of (module Primitive_words_runtime.Word32) op
+  | Word64 ->
+    let module W = struct
+      include Primitive_words_runtime.Word64
+      let shift_left = shift_left_word
+      let shift_right_logical = shift_right_logical_word
+      let shift_right_arithmetic = shift_right_arithmetic_word
+    end in
+    word_prim_of (module W) op
+  | Word128 ->
+    let module W = struct
+      include Primitive_words_runtime.Word128
+      let shift_left = shift_left_word
+      let shift_right_logical = shift_right_logical_word
+      let shift_right_arithmetic = shift_right_arithmetic_word
+    end in
+    word_prim_of (module W) op
+  | Word256 ->
+    let module W = struct
+      include Primitive_words_runtime.Word256
+      let shift_left = shift_left_word
+      let shift_right_logical = shift_right_logical_word
+      let shift_right_arithmetic = shift_right_arithmetic_word
+    end in
+    word_prim_of (module W) op
 
 let val_of_float f = (Obj.magic f : structured_values)
 
@@ -652,6 +838,20 @@ and pr_kind w =
   | Vconst i -> str "Vconst(" ++ int i ++ str ")"
   | Vblock _b -> str "Vblock"
   | Vint64 i -> i |> Format.sprintf "Vint64(%LiL)" |> str
+  | Vword8 i -> Primitive_words_runtime.Word8.to_int i |> Format.sprintf "Vword8(0x%02x)" |> str
+  | Vword16 i -> Primitive_words_runtime.Word16.to_int i |> Format.sprintf "Vword16(0x%04x)" |> str
+  | Vword32 i -> Primitive_words_runtime.Word32.to_int32 i |> Format.sprintf "Vword32(0x%08lx)" |> str
+  | Vword64 i ->
+    Primitive_words_runtime.Word64.to_int64 i
+    |> Format.sprintf "Vword64(0x%016Lx)" |> str
+  | Vword128 i ->
+    let low, high = Primitive_words_runtime.Word128.to_limbs i in
+    Format.sprintf "Vword128(0x%016Lx%016Lx)" high low |> str
+  | Vword256 i ->
+    let limb0, limb1, limb2, limb3 =
+      Primitive_words_runtime.Word256.to_limbs i in
+    Format.sprintf "Vword256(0x%016Lx%016Lx%016Lx%016Lx)"
+      limb3 limb2 limb1 limb0 |> str
   | Vfloat64 f -> str "Vfloat64(" ++ str (Float64.(to_string (of_float f))) ++ str ")"
   | Vstring s -> Pstring.to_string s |> Format.sprintf "Vstring(%S)" |> str
   | Varray _ -> str "Varray"

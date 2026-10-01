@@ -32,6 +32,7 @@ let rec pr_obj_rec mem o = match o with
   | String s ->
     Format.print_string ("\""^String.escaped s^"\"")
   | Int64 _
+  | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _
   | Float64 _ ->
     Format.print_string "?"
   end
@@ -71,14 +72,51 @@ let is_int64 mem o = match o with
 | Ptr p ->
   match LargeArray.get mem p with
   | Int64 _ -> true
-  | Float64 _ | Struct _ | String _ -> false
+  | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float64 _ | Struct _ | String _ -> false
+
+let is_word8 mem o = match o with
+| Int _ | Fun _ | Atm _ -> false
+| Ptr p ->
+  match LargeArray.get mem p with
+  | Word8 _ -> true
+  | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Int64 _ | Float64 _ | Struct _ | String _ -> false
+
+let is_word16 mem o = match o with
+| Int _ | Fun _ | Atm _ -> false
+| Ptr p -> match LargeArray.get mem p with
+  | Word16 _ -> true
+  | Word8 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Int64 _ | Float64 _ | Struct _ | String _ -> false
+
+let is_word32 mem o = match o with
+| Int _ | Fun _ | Atm _ -> false
+| Ptr p -> match LargeArray.get mem p with
+  | Word32 _ -> true
+  | Word8 _ | Word16 _ | Word64 _ | Word128 _ | Word256 _ | Int64 _ | Float64 _ | Struct _ | String _ -> false
+
+let is_word64 mem o = match o with
+| Int _ | Fun _ | Atm _ -> false
+| Ptr p -> match LargeArray.get mem p with
+  | Word64 _ -> true
+  | Word8 _ | Word16 _ | Word32 _ | Word128 _ | Word256 _ | Int64 _ | Float64 _ | Struct _ | String _ -> false
+
+let is_word128 mem o = match o with
+| Int _ | Fun _ | Atm _ -> false
+| Ptr p -> match LargeArray.get mem p with
+  | Word128 _ -> true
+  | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word256 _ | Int64 _ | Float64 _ | Struct _ | String _ -> false
+
+let is_word256 mem o = match o with
+| Int _ | Fun _ | Atm _ -> false
+| Ptr p -> match LargeArray.get mem p with
+  | Word256 _ -> true
+  | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Int64 _ | Float64 _ | Struct _ | String _ -> false
 
 let is_float64 mem o = match o with
 | Int _ | Fun _ | Atm _ -> false
 | Ptr p ->
   match LargeArray.get mem p with
   | Float64 _ -> true
-  | Int64 _ | Struct _ | String _ -> false
+  | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Int64 _ | Struct _ | String _ -> false
 
 let get_int _mem = function
 | Int i -> i
@@ -93,7 +131,7 @@ let tag mem o = match o with
   | Struct (tag, _) -> tag
   | String _ -> Obj.string_tag
   | Float64 _ -> Obj.double_tag
-  | Int64 _ -> Obj.custom_tag
+  | Int64 _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> Obj.custom_tag
 
 let size mem o = match o with
 | Atm _ -> 0
@@ -101,14 +139,14 @@ let size mem o = match o with
 | Ptr p ->
   match LargeArray.get mem p with
   | Struct (tag, blk) -> Array.length blk
-  | String _ | Float64 _ | Int64 _ -> assert false
+  | String _ | Float64 _ | Int64 _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> assert false
 
 let field mem o i = match o with
 | Atm _ | Fun _ | Int _ -> assert false
 | Ptr p ->
   match LargeArray.get mem p with
   | Struct (tag, blk) -> Array.get blk i
-  | String _ | Float64 _ | Int64 _ -> assert false
+  | String _ | Float64 _ | Int64 _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> assert false
 
 (* Check that object o is a block with tag t *)
 let val_tag t mem ctx o =
@@ -155,6 +193,12 @@ and val_gen_aux v mem ctx o = match kind v with
   | Fail s -> fail mem ctx o ("unexpected object " ^ s)
   | Annot (s,v) -> val_gen v mem (ctx/CtxAnnot s) o
   | Int64 -> val_int64 mem ctx o
+  | Word8 -> if not (is_word8 mem.mem o) then fail mem ctx o "not a primitive word8"
+  | Word16 -> if not (is_word16 mem.mem o) then fail mem ctx o "not a primitive word16"
+  | Word32 -> if not (is_word32 mem.mem o) then fail mem ctx o "not a primitive word32"
+  | Word64 -> val_word64 mem ctx o
+  | Word128 -> if not (is_word128 mem.mem o) then fail mem ctx o "not a primitive word128"
+  | Word256 -> if not (is_word256 mem.mem o) then fail mem ctx o "not a primitive word256"
   | Float64 -> val_float64 mem ctx o
 
 (* Check that an object is a tuple (or a record). vs is an array of
@@ -206,6 +250,10 @@ and val_array v mem ctx o =
 and val_int64 mem ctx o =
   if not (is_int64 mem.mem o) then
     fail mem ctx o "not a 63-bit unsigned integer"
+
+and val_word64 mem ctx o =
+  if not (is_word64 mem.mem o) then
+    fail mem ctx o "not a primitive word64"
 
 and val_float64 mem ctx o =
   if not (is_float64 mem.mem o) then

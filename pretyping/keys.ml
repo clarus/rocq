@@ -26,6 +26,12 @@ type key =
   | KCoFix
   | KRel
   | KInt
+  | KWord8
+  | KWord16
+  | KWord32
+  | KWord64
+  | KWord128
+  | KWord256
   | KFloat
   | KString
   | KArray
@@ -45,9 +51,15 @@ module KeyOrdered = struct
     | KCoFix -> 6
     | KRel -> 7
     | KInt -> 8
-    | KFloat -> 9
-    | KString -> 10
-    | KArray -> 11
+    | KWord8 -> 9
+    | KWord16 -> 10
+    | KWord32 -> 11
+    | KWord64 -> 12
+    | KWord128 -> 13
+    | KWord256 -> 14
+    | KFloat -> 15
+    | KString -> 16
+    | KArray -> 17
 
   let compare gr1 gr2 =
     match gr1, gr2 with
@@ -143,6 +155,12 @@ let constr_key env kind c =
       | Sort _ -> KSort
       | LetIn _ -> KLet
       | Int _ -> KInt
+      | Word8 _ -> KWord8
+      | Word16 _ -> KWord16
+      | Word32 _ -> KWord32
+      | Word64 _ -> KWord64
+      | Word128 _ -> KWord128
+      | Word256 _ -> KWord256
       | Float _ -> KFloat
       | String _ -> KString
       | Array _ -> KArray
@@ -162,6 +180,12 @@ let pr_key pr_global = function
   | KCoFix -> str"CoFix"
   | KRel -> str"Rel"
   | KInt -> str"Int"
+  | KWord8 -> str"Word8"
+  | KWord16 -> str"Word16"
+  | KWord32 -> str"Word32"
+  | KWord64 -> str"Word64"
+  | KWord128 -> str"Word128"
+  | KWord256 -> str"Word256"
   | KFloat -> str"Float"
   | KString -> str"String"
   | KArray -> str"Array"

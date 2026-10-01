@@ -552,6 +552,23 @@ struct
     | Int i -> i
     | _ -> raise Primred.NativeDestKO
 
+  let get_word64 evd e =
+    match EConstr.kind evd e with
+    | Word64 i -> i
+    | _ -> raise Primred.NativeDestKO
+
+  let get_word128 evd e = match EConstr.kind evd e with
+    | Word128 i -> i | _ -> raise Primred.NativeDestKO
+  let get_word256 evd e = match EConstr.kind evd e with
+    | Word256 i -> i | _ -> raise Primred.NativeDestKO
+
+  let get_word8 evd e = match EConstr.kind evd e with
+    | Word8 i -> i | _ -> raise Primred.NativeDestKO
+  let get_word16 evd e = match EConstr.kind evd e with
+    | Word16 i -> i | _ -> raise Primred.NativeDestKO
+  let get_word32 evd e = match EConstr.kind evd e with
+    | Word32 i -> i | _ -> raise Primred.NativeDestKO
+
   let get_float evd e =
     match EConstr.kind evd e with
     | Float f -> f
@@ -569,6 +586,14 @@ struct
 
   let mkInt env i =
     mkInt i
+
+  let mkWord8 env i = EConstr.of_constr (Constr.mkWord8 i)
+  let mkWord16 env i = EConstr.of_constr (Constr.mkWord16 i)
+  let mkWord32 env i = EConstr.of_constr (Constr.mkWord32 i)
+  let mkWord64 env i =
+    EConstr.of_constr (Constr.mkWord64 i)
+  let mkWord128 env i = EConstr.of_constr (Constr.mkWord128 i)
+  let mkWord256 env i = EConstr.of_constr (Constr.mkWord256 i)
 
   let mkFloat env f =
     mkFloat f
@@ -936,7 +961,7 @@ let rec whd_state_gen flags ?metas env sigma =
         |_ -> fold ()
       else fold ()
 
-    | Int _ | Float _ | String _ | Array _ ->
+    | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ ->
       begin match Stack.strip_app stack with
        | (_, Stack.Primitive(p,(_, u as kn),rargs,kargs)::s) ->
          let more_to_reduce = List.exists (fun k -> CPrimitives.Kwhnf = k) kargs in
@@ -1025,7 +1050,7 @@ let local_whd_state_gen flags ?metas env sigma =
       else s
 
     | Rel _ | Var _ | Sort _ | Prod _ | LetIn _ | Const _  | Ind _ | Proj _
-      | Int _ | Float _ | String _ | Array _ -> s
+      | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> s
 
   in
   whrec
@@ -1037,7 +1062,7 @@ let stack_red_of_state_red f ?metas =
 let red_of_state_red ?metas ~delta f env sigma x =
   let rec is_whnf c = match Constr.kind c with
     | Const _ | Var _ -> not delta
-    | Construct _ | Ind _ | Int _ | Float _ | String _
+    | Construct _ | Ind _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _
     | Sort _ | Prod _ -> true
     | App (h,_) -> is_whnf h
     | _ -> false
@@ -1119,7 +1144,7 @@ let shrink_eta sigma c =
         | _ -> x
       else x
     | Meta _ | App _ | Case _ | Fix _ | Construct _ | CoFix _ | Evar _ | Rel _ | Var _ | Sort _ | Prod _
-    | LetIn _ | Const _  | Ind _ | Proj _ | Int _ | Float _ | String _ | Array _ -> x
+    | LetIn _ | Const _  | Ind _ | Proj _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> x
   in
   whrec c
 

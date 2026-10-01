@@ -78,6 +78,20 @@ and ppwhd whd =
   | Vconst i -> print_string "C(";print_int i;print_string")"
   | Vblock b -> ppvblock b
   | Vint64 i -> printf "int64(%LiL)" i
+  | Vword8 i ->
+      print_string (Primitive_words_runtime.Word8.to_string i)
+  | Vword16 i ->
+      print_string (Primitive_words_runtime.Word16.to_string i)
+  | Vword32 i ->
+      print_string (Primitive_words_runtime.Word32.to_string i)
+  | Vword64 i ->
+    printf "word64(0x%016Lx)" (Primitive_words_runtime.Word64.to_int64 i)
+  | Vword128 i ->
+    let low, high = Primitive_words_runtime.Word128.to_limbs i in
+    printf "word128(0x%016Lx%016Lx)" high low
+  | Vword256 i ->
+    let l0, l1, l2, l3 = Primitive_words_runtime.Word256.to_limbs i in
+    printf "word256(0x%016Lx%016Lx%016Lx%016Lx)" l3 l2 l1 l0
   | Vfloat64 f -> printf "float64(%.17g)" f
   | Vstring s -> printf "string(%S)" (Pstring.to_string s)
   | Varray t -> ppvarray t

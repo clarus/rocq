@@ -97,6 +97,12 @@ and fterm =
   | FLetIn of Name.t binder_annot * fconstr * fconstr * constr * usubs
   | FEvar of Evar.t * constr list * usubs * evar_repack
   | FInt of Uint63.t
+  | FWord8 of Primitive_words_runtime.Word8.t
+  | FWord16 of Primitive_words_runtime.Word16.t
+  | FWord32 of Primitive_words_runtime.Word32.t
+  | FWord64 of Primitive_words_runtime.Word64.t
+  | FWord128 of Primitive_words_runtime.Word128.t
+  | FWord256 of Primitive_words_runtime.Word256.t
   | FFloat of Float64.t
   | FString of Pstring.t
   | FArray of UVars.Instance.t * fconstr Parray.t * fconstr
@@ -239,7 +245,7 @@ let usubs_shft (n,(e,u)) = subs_shft (n, e), u
    when the lift is 0. *)
 let rec lft_fconstr n ft =
   match ft.term with
-    | (FInd _|FConstruct (_,[||])|FFlex(ConstKey _|VarKey _)|FInt _|FFloat _|FString _|FIrrelevant) -> ft
+    | (FInd _|FConstruct (_,[||])|FFlex(ConstKey _|VarKey _)|FInt _|FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _|FFloat _|FString _|FIrrelevant) -> ft
     | FRel i -> {mark=ft.mark;term=FRel(i+n)}
     | FLambda(k,tys,f,e) -> {mark=Cstr; term=FLambda(k,tys,f,usubs_shft(n,e))}
     | FFix(fx,e) ->
@@ -345,6 +351,12 @@ let mk_clos (e:usubs) t =
     | Ind kn -> {mark = Ntrl; term = FInd (usubst_punivs e kn) }
     | Construct kn -> {mark = Cstr; term = FConstruct (usubst_punivs e kn,[||]) }
     | Int i -> {mark = Cstr; term = FInt i}
+    | Word8 i -> {mark = Cstr; term = FWord8 i}
+    | Word16 i -> {mark = Cstr; term = FWord16 i}
+    | Word32 i -> {mark = Cstr; term = FWord32 i}
+    | Word64 i -> {mark = Cstr; term = FWord64 i}
+    | Word128 i -> {mark = Cstr; term = FWord128 i}
+    | Word256 i -> {mark = Cstr; term = FWord256 i}
     | Float f -> {mark = Cstr; term = FFloat f}
     | String s -> {mark = Cstr; term = FString s}
     | (CoFix _|Lambda _|Fix _|Prod _|Evar _|App _|Case _|Cast _|LetIn _|Proj _|Array _) ->
@@ -601,6 +613,15 @@ let rec to_constr lfts v =
 
     | FInt i ->
        Constr.mkInt i
+    | FWord8 i -> Constr.mkWord8 i
+    | FWord16 i -> Constr.mkWord16 i
+    | FWord32 i -> Constr.mkWord32 i
+    | FWord64 i ->
+       Constr.mkWord64 i
+    | FWord128 i ->
+       Constr.mkWord128 i
+    | FWord256 i ->
+       Constr.mkWord256 i
     | FFloat f ->
         Constr.mkFloat f
     | FString s ->
@@ -738,7 +759,7 @@ let rec resubst subs v =
       FCLOS (t, env) }
 
   | FFlex (RelKey _) -> v (* outside the substitution *)
-  | FFlex (ConstKey _ | VarKey _) | FInd _ | FConstruct _ | FAtom _ | FInt _ | FFloat _ | FString _ -> v
+  | FFlex (ConstKey _ | VarKey _) | FInd _ | FConstruct _ | FAtom _ | FInt _ | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _ | FFloat _ | FString _ -> v
 
   | FIrrelevant -> v (* Stable under substitution and lifts *)
   | FLOCKED -> assert (!Flags.in_debugger); v
@@ -1122,6 +1143,36 @@ module FNativeEntries =
       | FInt i -> i
       | _ -> assert false
 
+    let get_word64 () e =
+      match [@ocaml.warning "-4"] e.term with
+      | FWord64 i -> i
+      | _ -> assert false
+
+    let get_word8 () e =
+      match [@ocaml.warning "-4"] e.term with
+      | FWord8 i -> i
+      | _ -> assert false
+
+    let get_word16 () e =
+      match [@ocaml.warning "-4"] e.term with
+      | FWord16 i -> i
+      | _ -> assert false
+
+    let get_word32 () e =
+      match [@ocaml.warning "-4"] e.term with
+      | FWord32 i -> i
+      | _ -> assert false
+
+    let get_word128 () e =
+      match [@ocaml.warning "-4"] e.term with
+      | FWord128 i -> i
+      | _ -> assert false
+
+    let get_word256 () e =
+      match [@ocaml.warning "-4"] e.term with
+      | FWord256 i -> i
+      | _ -> assert false
+
     let get_float () e =
       match [@ocaml.warning "-4"] e.term with
       | FFloat f -> f
@@ -1149,6 +1200,26 @@ module FNativeEntries =
         defined_int := true;
         fint := { mark = Ntrl; term = FFlex (ConstKey (UVars.in_punivs c)) }
       | None -> defined_int := false
+
+    let defined_word64 = ref false
+
+    let defined_word8 = ref false
+    let defined_word16 = ref false
+    let defined_word32 = ref false
+    let defined_word128 = ref false
+    let defined_word256 = ref false
+
+    let init_word64 retro =
+      defined_word64 := Option.has_some retro.Retroknowledge.retro_word64
+
+    let init_small_words retro =
+      defined_word8 := Option.has_some retro.Retroknowledge.retro_word8;
+      defined_word16 := Option.has_some retro.Retroknowledge.retro_word16;
+      defined_word32 := Option.has_some retro.Retroknowledge.retro_word32
+
+    let init_wide_words retro =
+      defined_word128 := Option.has_some retro.Retroknowledge.retro_word128;
+      defined_word256 := Option.has_some retro.Retroknowledge.retro_word256
 
     let defined_float = ref false
     let ffloat = ref dummy
@@ -1272,6 +1343,9 @@ module FNativeEntries =
     let init env =
       current_retro := Environ.retroknowledge env;
       init_int !current_retro;
+      init_word64 !current_retro;
+      init_small_words !current_retro;
+      init_wide_words !current_retro;
       init_float !current_retro;
       init_string !current_retro;
       init_bool !current_retro;
@@ -1288,6 +1362,16 @@ module FNativeEntries =
     let check_int env =
       check_env env;
       assert (!defined_int)
+
+    let check_word64 env =
+      check_env env;
+      assert (!defined_word64)
+
+    let check_word8 env = check_env env; assert (!defined_word8)
+    let check_word16 env = check_env env; assert (!defined_word16)
+    let check_word32 env = check_env env; assert (!defined_word32)
+    let check_word128 env = check_env env; assert (!defined_word128)
+    let check_word256 env = check_env env; assert (!defined_word256)
 
     let check_float env =
       check_env env;
@@ -1328,6 +1412,16 @@ module FNativeEntries =
     let mkInt env i =
       check_int env;
       { mark = Cstr; term = FInt i }
+
+    let mkWord64 env i =
+      check_word64 env;
+      { mark = Cstr; term = FWord64 i }
+
+    let mkWord8 env i = check_word8 env; { mark = Cstr; term = FWord8 i }
+    let mkWord16 env i = check_word16 env; { mark = Cstr; term = FWord16 i }
+    let mkWord32 env i = check_word32 env; { mark = Cstr; term = FWord32 i }
+    let mkWord128 env i = check_word128 env; { mark = Cstr; term = FWord128 i }
+    let mkWord256 env i = check_word256 env; { mark = Cstr; term = FWord256 i }
 
     let mkFloat env f =
       check_float env;
@@ -1480,7 +1574,7 @@ let rec knh info m stk =
 
 (* cases where knh stops *)
     | (FFlex _|FLetIn _|FEvar _|FCaseInvert _|FIrrelevant|
-       FCoFix _|FLambda _|FRel _|FAtom _|FInd _|FProd _|FInt _|FFloat _|
+       FCoFix _|FLambda _|FRel _|FAtom _|FInd _|FProd _|FInt _|FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _|FFloat _|
        FString _|FArray _) ->
         (m, stk)
 
@@ -1533,7 +1627,7 @@ and knht info e t stk =
       | Some s -> knht info e c (s :: stk)
       end
     | Construct _ -> knh info (mk_clos e t) stk
-    | (Ind _|Const _|Var _|Meta _ | Sort _ | Int _|Float _|String _) -> (mk_clos e t, stk)
+    | (Ind _|Const _|Var _|Meta _ | Sort _ | Int _|Word8 _|Word16 _|Word32 _|Word64 _|Word128 _|Word256 _|Float _|String _) -> (mk_clos e t, stk)
     | CoFix cfx ->
       { mark = Cstr; term = FCoFix (cfx,e) }, stk
     | Lambda _ -> { mark = Cstr ; term = mk_lambda e t }, stk
@@ -1906,6 +2000,12 @@ and match_head red info tab ~pat_state next depth states patterns t stk =
     in
     let loc = LocStart { elims; depth; head=t; stack=stk; next=Continue next } in
     match_main red info tab ~pat_state states loc
+  | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _ ->
+    let elims, states =
+      extract_or_kill2 (fun _ -> None) patterns states
+    in
+    let loc = LocStart { elims; depth; head=t; stack=stk; next=Continue next } in
+    match_main red info tab ~pat_state states loc
   | FFloat f' ->
     let elims, states = extract_or_kill2 (function [@ocaml.warning "-4"]
     | (PHFloat f, elims), psubst ->
@@ -2044,7 +2144,7 @@ let rec knr info tab ~pat_state m stk =
     else knr_ret info tab ~pat_state (m, stk)
   | FLetIn (_,v,_,bd,e) when red_set info.i_flags fZETA ->
       knit info tab ~pat_state (usubs_cons v e) bd stk
-  | FInt _ | FFloat _ | FString _ | FArray _ ->
+  | FInt _ | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _ | FFloat _ | FString _ | FArray _ ->
     (match [@ocaml.warning "-4"] strip_update_shift_app m stk with
      | (_, _, _, Zprimitive(op,(_,u as c),rargs,nargs)::s) ->
        let (rargs, nargs) = skip_native_args (m::rargs) nargs in
@@ -2148,7 +2248,7 @@ let kh info tab v stk = fapp_stack(kni info tab v stk)
       calls itself recursively. *)
 
 let is_val v = match v.term with
-| FAtom _ | FRel _   | FInd _ | FConstruct (_,[||]) | FInt _ | FFloat _ | FString _ -> true
+| FAtom _ | FRel _   | FInd _ | FConstruct (_,[||]) | FInt _ | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _ | FFloat _ | FString _ -> true
 | FFlex _ -> v.mark == Ntrl
 | FConstruct _ | FApp _ | FProj _ | FFix _ | FCoFix _ | FCaseT _ | FCaseInvert _ | FLambda _
 | FProd _ | FLetIn _ | FEvar _ | FArray _ | FLIFT _ | FCLOS _ -> false
@@ -2175,7 +2275,7 @@ and klt info tab e t = match kind t with
   | Rel _ -> false (* For AppRel, in case of a higher-order substitution, knit correctly deals with it *)
   | Ind _ | Construct _ -> true
   | CoFix _ | Lambda _ | Fix _ | Prod _ | Evar _ | Case _
-  | Cast _ | LetIn _ | Proj _ | Array _ | Meta _ | Sort _ | Int _
+  | Cast _ | LetIn _ | Proj _ | Array _ | Meta _ | Sort _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _
   | Float _ | String _ -> false
   | Const (cst, _) ->
     let ts = RedFlags.red_transparent info.i_flags in
@@ -2213,7 +2313,7 @@ and klt info tab e t = match kind t with
   let (nm,s) = knit info tab e t [] in
   let () = if share then ignore (fapp_stack (nm, s)) in (* to unlock Zupdates! *)
   zip_term info tab (norm_head info tab nm) s
-| Meta _ | Sort _ | Ind _ | Construct _ | Int _ | Float _ | String _ ->
+| Meta _ | Sort _ | Ind _ | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ ->
   subst_instance_constr (snd e) t
 
 (* no redex: go up for atoms and already normalized terms, go down
@@ -2263,7 +2363,7 @@ and norm_head info tab m =
         mkArray (u, a, def, ty)
       | FConstruct (c,args) -> mkApp (mkConstructU c, Array.map (kl info tab) args)
       | FLOCKED | FRel _ | FAtom _ | FFlex _ | FInd _
-      | FApp _ | FCaseT _ | FCaseInvert _ | FLIFT _ | FCLOS _ | FInt _
+      | FApp _ | FCaseT _ | FCaseInvert _ | FLIFT _ | FCLOS _ | FInt _ | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _
       | FFloat _ | FString _ -> term_of_fconstr m
       | FIrrelevant -> assert false (* only introduced when converting *)
 

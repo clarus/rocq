@@ -879,6 +879,36 @@ let is_int63_type env c =
   | None -> false
   | Some c' -> Constant.CanOrd.equal c c'
 
+let is_word64_type env c =
+  match env.retroknowledge.Retroknowledge.retro_word64 with
+  | None -> false
+  | Some c' -> Constant.CanOrd.equal c c'
+
+let is_word128_type env c =
+  match env.retroknowledge.Retroknowledge.retro_word128 with
+  | None -> false
+  | Some c' -> Constant.CanOrd.equal c c'
+
+let is_word256_type env c =
+  match env.retroknowledge.Retroknowledge.retro_word256 with
+  | None -> false
+  | Some c' -> Constant.CanOrd.equal c c'
+
+let is_word8_type env c =
+  match env.retroknowledge.Retroknowledge.retro_word8 with
+  | None -> false
+  | Some c' -> Constant.CanOrd.equal c c'
+
+let is_word16_type env c =
+  match env.retroknowledge.Retroknowledge.retro_word16 with
+  | None -> false
+  | Some c' -> Constant.CanOrd.equal c c'
+
+let is_word32_type env c =
+  match env.retroknowledge.Retroknowledge.retro_word32 with
+  | None -> false
+  | Some c' -> Constant.CanOrd.equal c c'
+
 let is_float64_type env c =
   match env.retroknowledge.Retroknowledge.retro_float64 with
   | None -> false
@@ -899,11 +929,19 @@ let is_primitive_type env c =
   let _ =
     function
     | CPrimitives.(PTE(PT_int63))
+    | CPrimitives.(PTE(PT_word8))
+    | CPrimitives.(PTE(PT_word16))
+    | CPrimitives.(PTE(PT_word32))
+    | CPrimitives.(PTE(PT_word64))
+    | CPrimitives.(PTE(PT_word128))
+    | CPrimitives.(PTE(PT_word256))
     | CPrimitives.(PTE(PT_float64))
     | CPrimitives.(PTE(PT_string))
     | CPrimitives.(PTE(PT_array)) -> ()
   in
-  is_int63_type env c || is_float64_type env c || is_array_type env c ||
+  is_int63_type env c || is_word8_type env c || is_word16_type env c ||
+  is_word32_type env c || is_word64_type env c || is_word128_type env c || is_word256_type env c ||
+  is_float64_type env c || is_array_type env c ||
   is_string_type env c
 
 let polymorphic_constant cst env =

@@ -213,6 +213,7 @@ struct
          by pat_of_constr which ignores universes *)
       pat_of_constr (mkApp (UnsafeMonomorphic.mkConst (Environ.projection_repr_constant env (Projection.repr p)), [|c|]))
     | Int i -> Some (DInt i, [])
+    | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> None
     | Float f -> Some (DFloat f, [])
     | String s -> Some (DString s, [])
     | Array (_u,t,def,ty) ->

@@ -378,7 +378,7 @@ let iter_constr_LR sigma f c = match EConstr.kind sigma c with
   | Proj(_,_,a) -> f a
   | Array(_u,t,def,ty) -> Array.iter f t; f def; f ty
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _ | Construct _
-     | Int _ | Float _ | String _) -> ()
+     | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> ()
 
 (* The comparison used to determine which subterms matches is KEYED        *)
 (* CONVERSION. This looks for convertible terms that either have the same  *)
@@ -432,7 +432,7 @@ let proj_nparams env c =
   with Not_found -> 0
 
 let isRigid sigma c = match EConstr.kind sigma c with
-  | (Prod _ | Sort _ | Lambda _ | Case _ | Fix _ | CoFix _| Int _
+  | (Prod _ | Sort _ | Lambda _ | Case _ | Fix _ | CoFix _| Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _
     | Float _ | String _ | Array _) -> true
   | (Rel _ | Var _ | Meta _ | Evar (_, _) | Cast (_, _, _) | LetIn (_, _, _, _)
     | App (_, _) | Const (_, _) | Ind ((_, _), _) | Construct (((_, _), _), _)

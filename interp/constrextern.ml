@@ -875,6 +875,24 @@ let rec extern depth0 inctx scopes (eenv:extern_env) r =
     | GInt i when Rocqlib.has_ref "num.int63.wrap_int" ->
        let wrap = Rocqlib.lib_ref "num.int63.wrap_int" in
        DAst.make (GApp (DAst.make (GRef (wrap, None)), [r]))
+    | GWord8 _ when Rocqlib.has_ref "num.word8.wrap_word8" ->
+       let wrap = Rocqlib.lib_ref "num.word8.wrap_word8" in
+       DAst.make (GApp (DAst.make (GRef (wrap, None)), [r]))
+    | GWord16 _ when Rocqlib.has_ref "num.word16.wrap_word16" ->
+       let wrap = Rocqlib.lib_ref "num.word16.wrap_word16" in
+       DAst.make (GApp (DAst.make (GRef (wrap, None)), [r]))
+    | GWord32 _ when Rocqlib.has_ref "num.word32.wrap_word32" ->
+       let wrap = Rocqlib.lib_ref "num.word32.wrap_word32" in
+       DAst.make (GApp (DAst.make (GRef (wrap, None)), [r]))
+    | GWord64 i when Rocqlib.has_ref "num.word64.wrap_word64" ->
+       let wrap = Rocqlib.lib_ref "num.word64.wrap_word64" in
+       DAst.make (GApp (DAst.make (GRef (wrap, None)), [r]))
+    | GWord128 _ when Rocqlib.has_ref "num.word128.wrap_word128" ->
+       let wrap = Rocqlib.lib_ref "num.word128.wrap_word128" in
+       DAst.make (GApp (DAst.make (GRef (wrap, None)), [r]))
+    | GWord256 _ when Rocqlib.has_ref "num.word256.wrap_word256" ->
+       let wrap = Rocqlib.lib_ref "num.word256.wrap_word256" in
+       DAst.make (GApp (DAst.make (GRef (wrap, None)), [r]))
     | GFloat f when Rocqlib.has_ref "num.float.wrap_float" ->
        let wrap = Rocqlib.lib_ref "num.float.wrap_float" in
        DAst.make (GApp (DAst.make (GRef (wrap, None)), [r]))
@@ -1046,6 +1064,52 @@ let rec extern depth0 inctx scopes (eenv:extern_env) r =
      extern_prim_token_delimiter_if_required
        (Number NumTok.(Signed.of_bigint CHex (Z.of_int64 (Uint63.to_int64 i))))
        "uint63" "uint63_scope" (snd scopes)
+
+  | GWord8 i ->
+     extern_prim_token_delimiter_if_required
+       (Number NumTok.(Signed.of_bigint CHex (Z.of_int (Primitive_words_runtime.Word8.to_int i))))
+       "word8" "word8_scope" (snd scopes)
+  | GWord16 i ->
+     extern_prim_token_delimiter_if_required
+       (Number NumTok.(Signed.of_bigint CHex (Z.of_int (Primitive_words_runtime.Word16.to_int i))))
+       "word16" "word16_scope" (snd scopes)
+  | GWord32 i ->
+     let raw = Primitive_words_runtime.Word32.to_int32 i in
+     let z = Z.of_int32 raw in
+     let z = if Int32.compare raw 0l < 0 then Z.add z (Z.shift_left Z.one 32) else z in
+     extern_prim_token_delimiter_if_required
+       (Number NumTok.(Signed.of_bigint CHex z))
+       "word32" "word32_scope" (snd scopes)
+
+  | GWord64 i ->
+     let raw = Primitive_words_runtime.Word64.to_int64 i in
+     let z = Z.of_int64 raw in
+     let z = if Int64.compare raw 0L < 0 then Z.add z (Z.shift_left Z.one 64) else z in
+     extern_prim_token_delimiter_if_required
+       (Number NumTok.(Signed.of_bigint CHex z))
+       "word64" "word64_scope" (snd scopes)
+
+  | GWord128 i ->
+     let low, high = Primitive_words_runtime.Word128.to_limbs i in
+     let limb raw =
+       let z = Z.of_int64 raw in
+       if Int64.compare raw 0L < 0 then Z.add z (Z.shift_left Z.one 64) else z in
+     let z = Z.logor (limb low) (Z.shift_left (limb high) 64) in
+     extern_prim_token_delimiter_if_required
+       (Number NumTok.(Signed.of_bigint CHex z))
+       "word128" "word128_scope" (snd scopes)
+
+  | GWord256 i ->
+     let l0, l1, l2, l3 = Primitive_words_runtime.Word256.to_limbs i in
+     let limb raw =
+       let z = Z.of_int64 raw in
+       if Int64.compare raw 0L < 0 then Z.add z (Z.shift_left Z.one 64) else z in
+     let z = Z.logor (limb l0)
+       (Z.logor (Z.shift_left (limb l1) 64)
+         (Z.logor (Z.shift_left (limb l2) 128) (Z.shift_left (limb l3) 192))) in
+     extern_prim_token_delimiter_if_required
+       (Number NumTok.(Signed.of_bigint CHex z))
+       "word256" "word256_scope" (snd scopes)
 
   | GFloat f -> extern_float f (snd scopes)
 
@@ -1513,6 +1577,12 @@ let rec glob_of_pat
   | PSort (Qual (QGlobal _ as q)) -> GSort (Some (GQuality q), Glob_ops.glob_rigid_univ)
   | PSort Set -> GSort Glob_ops.glob_Set_sort
   | PInt i -> GInt i
+  | PWord8 i -> GWord8 i
+  | PWord16 i -> GWord16 i
+  | PWord32 i -> GWord32 i
+  | PWord64 i -> GWord64 i
+  | PWord128 i -> GWord128 i
+  | PWord256 i -> GWord256 i
   | PFloat f -> GFloat f
   | PString s -> GString s
   | PArray(t,def,ty) ->

@@ -36,10 +36,22 @@ module type RedNativeEntries =
 
     val get : args -> int -> elem
     val get_int : evd -> elem -> Uint63.t
+    val get_word8 : evd -> elem -> Primitive_words_runtime.Word8.t
+    val get_word16 : evd -> elem -> Primitive_words_runtime.Word16.t
+    val get_word32 : evd -> elem -> Primitive_words_runtime.Word32.t
+    val get_word64 : evd -> elem -> Primitive_words_runtime.Word64.t
+    val get_word128 : evd -> elem -> Primitive_words_runtime.Word128.t
+    val get_word256 : evd -> elem -> Primitive_words_runtime.Word256.t
     val get_float : evd -> elem -> Float64.t
     val get_string : evd -> elem -> Pstring.t
     val get_parray : evd -> elem -> elem Parray.t
     val mkInt : env -> Uint63.t -> elem
+    val mkWord8 : env -> Primitive_words_runtime.Word8.t -> elem
+    val mkWord16 : env -> Primitive_words_runtime.Word16.t -> elem
+    val mkWord32 : env -> Primitive_words_runtime.Word32.t -> elem
+    val mkWord64 : env -> Primitive_words_runtime.Word64.t -> elem
+    val mkWord128 : env -> Primitive_words_runtime.Word128.t -> elem
+    val mkWord256 : env -> Primitive_words_runtime.Word256.t -> elem
     val mkFloat : env -> Float64.t -> elem
     val mkString : env -> Pstring.t -> elem
     val mkBool : env -> bool -> elem

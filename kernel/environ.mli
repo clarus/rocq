@@ -236,6 +236,12 @@ val get_primitive : env -> Constant.t -> CPrimitives.t option
 
 val is_array_type : env -> Constant.t -> bool
 val is_int63_type : env -> Constant.t -> bool
+val is_word8_type : env -> Constant.t -> bool
+val is_word16_type : env -> Constant.t -> bool
+val is_word32_type : env -> Constant.t -> bool
+val is_word64_type : env -> Constant.t -> bool
+val is_word128_type : env -> Constant.t -> bool
+val is_word256_type : env -> Constant.t -> bool
 val is_float64_type : env -> Constant.t -> bool
 val is_string_type : env -> Constant.t -> bool
 val is_primitive_type : env -> Constant.t -> bool

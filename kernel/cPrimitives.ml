@@ -14,6 +14,15 @@
 open Univ
 open UVars
 
+type word_width = Word8 | Word16 | Word32 | Word64 | Word128 | Word256
+
+type word_op =
+  | Wneg | Wadd | Wsub | Wmul
+  | Wland | Wlor | Wlxor | Wlnot
+  | Weq | Wltu | Wleu | Wlts | Wles
+  | Wlsl | Wlsr | Wasr
+  | Wdivu | Wmodu | Wdivs | Wrems
+
 type t =
   | Int63head0
   | Int63tail0
@@ -45,6 +54,7 @@ type t =
   | Int63les
   | Int63compare
   | Int63compares
+  | Word of word_width * word_op
   | Float64opp
   | Float64abs
   | Float64eq
@@ -77,7 +87,34 @@ type t =
   | Stringcat
   | Stringcompare
 
-let parse = function
+let word_width_of_string = function
+  | "word8" -> Word8
+  | "word16" -> Word16
+  | "word32" -> Word32
+  | "word64" -> Word64
+  | "word128" -> Word128
+  | "word256" -> Word256
+  | _ -> raise Not_found
+
+let word_op_of_string = function
+  | "neg" -> Wneg | "add" -> Wadd | "sub" -> Wsub | "mul" -> Wmul
+  | "land" -> Wland | "lor" -> Wlor | "lxor" -> Wlxor | "lnot" -> Wlnot
+  | "eq" -> Weq | "ltu" -> Wltu | "leu" -> Wleu
+  | "lts" -> Wlts | "les" -> Wles
+  | "lsl" -> Wlsl | "lsr" -> Wlsr | "asr" -> Wasr
+  | "divu" -> Wdivu | "modu" -> Wmodu
+  | "divs" -> Wdivs | "rems" -> Wrems
+  | _ -> raise Not_found
+
+let parse_word name =
+  match String.index_opt name '_' with
+  | None -> raise Not_found
+  | Some split ->
+    let width = String.sub name 0 split in
+    let op = String.sub name (split + 1) (String.length name - split - 1) in
+    Word (word_width_of_string width, word_op_of_string op)
+
+let parse name = match name with
   | "int63_head0" -> Int63head0
   | "int63_tail0" -> Int63tail0
   | "int63_add" -> Int63add
@@ -139,10 +176,12 @@ let parse = function
   | "string_sub" -> Stringsub
   | "string_cat" -> Stringcat
   | "string_compare" -> Stringcompare
-  | _ -> raise Not_found
+  | _ -> parse_word name
 
 let equal (p1 : t) (p2 : t) =
-  p1 == p2
+  p1 == p2 || match p1, p2 with
+  | Word (w1, op1), Word (w2, op2) -> w1 = w2 && op1 = op2
+  | _ -> false
 
 let hash = function
   | Int63head0 -> 1
@@ -206,8 +245,30 @@ let hash = function
   | Stringsub -> 59
   | Stringcat -> 60
   | Stringcompare -> 61
+  | Word (width, op) ->
+    62 + 20 * (match width with Word8 -> 0 | Word16 -> 1 | Word32 -> 2
+      | Word64 -> 3 | Word128 -> 4 | Word256 -> 5) +
+    (match op with
+     | Wneg -> 0 | Wadd -> 1 | Wsub -> 2 | Wmul -> 3
+     | Wland -> 4 | Wlor -> 5 | Wlxor -> 6 | Wlnot -> 7
+     | Weq -> 8 | Wltu -> 9 | Wleu -> 10 | Wlts -> 11 | Wles -> 12
+     | Wlsl -> 13 | Wlsr -> 14 | Wasr -> 15
+     | Wdivu -> 16 | Wmodu -> 17 | Wdivs -> 18 | Wrems -> 19)
 
 (* Should match names in nativevalues.ml *)
+let word_width_to_string = function
+  | Word8 -> "word8" | Word16 -> "word16"
+  | Word32 -> "word32" | Word64 -> "word64"
+  | Word128 -> "word128" | Word256 -> "word256"
+
+let word_op_to_string = function
+  | Wneg -> "neg" | Wadd -> "add" | Wsub -> "sub" | Wmul -> "mul"
+  | Wland -> "land" | Wlor -> "lor" | Wlxor -> "lxor" | Wlnot -> "lnot"
+  | Weq -> "eq" | Wltu -> "ltu" | Wleu -> "leu"
+  | Wlts -> "lts" | Wles -> "les"
+  | Wlsl -> "lsl" | Wlsr -> "lsr" | Wasr -> "asr"
+  | Wdivu -> "divu" | Wmodu -> "modu" | Wdivs -> "divs" | Wrems -> "rems"
+
 let to_string = function
   | Int63head0 -> "head0"
   | Int63tail0 -> "tail0"
@@ -239,6 +300,7 @@ let to_string = function
   | Int63les -> "les"
   | Int63compare -> "compare"
   | Int63compares -> "compares"
+  | Word (width, op) -> word_width_to_string width ^ "_" ^ word_op_to_string op
   | Float64opp -> "fopp"
   | Float64abs -> "fabs"
   | Float64eq -> "feq"
@@ -290,6 +352,12 @@ let const_univs = function
 
 type 'a prim_type =
   | PT_int63 : unit prim_type
+  | PT_word8 : unit prim_type
+  | PT_word16 : unit prim_type
+  | PT_word32 : unit prim_type
+  | PT_word64 : unit prim_type
+  | PT_word128 : unit prim_type
+  | PT_word256 : unit prim_type
   | PT_float64 : unit prim_type
   | PT_string : unit prim_type
   | PT_array : (Instance.t * ind_or_type) prim_type
@@ -312,6 +380,12 @@ let one_univ =
 
 let typ_univs (type a) (t : a prim_type) = match t with
   | PT_int63 -> AbstractContext.empty
+  | PT_word8 -> AbstractContext.empty
+  | PT_word16 -> AbstractContext.empty
+  | PT_word32 -> AbstractContext.empty
+  | PT_word64 -> AbstractContext.empty
+  | PT_word128 -> AbstractContext.empty
+  | PT_word256 -> AbstractContext.empty
   | PT_float64 -> AbstractContext.empty
   | PT_string -> AbstractContext.empty
   | PT_array -> one_univ
@@ -322,6 +396,12 @@ type prim_ind_ex = PIE : 'a prim_ind -> prim_ind_ex
 
 let types =
   let int_ty = PITT_type (PT_int63, ()) in
+  let word8_ty = PITT_type (PT_word8, ()) in
+  let word16_ty = PITT_type (PT_word16, ()) in
+  let word32_ty = PITT_type (PT_word32, ()) in
+  let word64_ty = PITT_type (PT_word64, ()) in
+  let word128_ty = PITT_type (PT_word128, ()) in
+  let word256_ty = PITT_type (PT_word256, ()) in
   let float_ty = PITT_type (PT_float64, ()) in
   let string_ty = PITT_type (PT_string, ()) in
   let array_ty =
@@ -351,6 +431,20 @@ let types =
       [int_ty; int_ty; int_ty], PITT_ind (PIT_pair, (int_ty, int_ty))
   | Int63addMulDiv ->
       [int_ty; int_ty; int_ty], int_ty
+  | Word (width, op) ->
+      let word_ty = match width with
+        | Word8 -> word8_ty | Word16 -> word16_ty
+        | Word32 -> word32_ty | Word64 -> word64_ty
+        | Word128 -> word128_ty | Word256 -> word256_ty
+      in
+      begin match op with
+      | Wneg | Wlnot -> [word_ty], word_ty
+      | Weq | Wltu | Wleu | Wlts | Wles ->
+        [word_ty; word_ty], PITT_ind (PIT_bool, ())
+      | Wadd | Wsub | Wmul | Wland | Wlor | Wlxor
+      | Wlsl | Wlsr | Wasr | Wdivu | Wmodu | Wdivs | Wrems ->
+        [word_ty; word_ty], word_ty
+      end
   | Float64opp | Float64abs | Float64sqrt
   | Float64next_up | Float64next_down ->
       [float_ty], float_ty
@@ -432,6 +526,7 @@ let params = function
   | Int63les
   | Int63compare
   | Int63compares
+  | Word _
   | Float64opp
   | Float64abs
   | Float64eq
@@ -498,6 +593,7 @@ let univs = function
   | Int63les
   | Int63compare
   | Int63compares
+  | Word _
   | Float64opp
   | Float64abs
   | Float64eq
@@ -570,6 +666,12 @@ let prim_ind_to_string (type a) (p : a prim_ind) = match p with
 
 let prim_type_to_string (type a) (ty : a prim_type) = match ty with
   | PT_int63 -> "int63_type"
+  | PT_word8 -> "word8_type"
+  | PT_word16 -> "word16_type"
+  | PT_word32 -> "word32_type"
+  | PT_word64 -> "word64_type"
+  | PT_word128 -> "word128_type"
+  | PT_word256 -> "word256_type"
   | PT_float64 -> "float64_type"
   | PT_string -> "string_type"
   | PT_array -> "array_type"
@@ -581,6 +683,12 @@ let op_or_type_to_string = function
 
 let prim_type_of_string = function
   | "int63_type" -> PTE PT_int63
+  | "word8_type" -> PTE PT_word8
+  | "word16_type" -> PTE PT_word16
+  | "word32_type" -> PTE PT_word32
+  | "word64_type" -> PTE PT_word64
+  | "word128_type" -> PTE PT_word128
+  | "word256_type" -> PTE PT_word256
   | "float64_type" -> PTE PT_float64
   | "string_type" -> PTE PT_string
   | "array_type" -> PTE PT_array

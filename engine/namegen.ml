@@ -152,6 +152,7 @@ let hdchar env sigma c =
     | Evar _ (* We could do better... *)
     | Meta _ | Case _ -> "y"
     | Int _ -> "i"
+    | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> "w"
     | Float _ -> "f"
     | String _ -> "s"
     | Array _ -> "a"

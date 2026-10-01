@@ -63,6 +63,21 @@ let rec conv_val env pb lvl v1 v2 cu =
         if Int.equal i1 i2 then cu else raise NotConvertible
     | Vint64 i1, Vint64 i2 ->
       if Int64.equal i1 i2 then cu else raise NotConvertible
+    | Vword8 i1, Vword8 i2 ->
+      if Primitive_words_runtime.Word8.equal i1 i2 then cu else raise NotConvertible
+    | Vword16 i1, Vword16 i2 ->
+      if Primitive_words_runtime.Word16.equal i1 i2 then cu else raise NotConvertible
+    | Vword32 i1, Vword32 i2 ->
+      if Primitive_words_runtime.Word32.equal i1 i2 then cu else raise NotConvertible
+    | Vword64 i1, Vword64 i2 ->
+      if Primitive_words_runtime.Word64.equal i1 i2 then cu
+      else raise NotConvertible
+    | Vword128 i1, Vword128 i2 ->
+      if Primitive_words_runtime.Word128.equal i1 i2 then cu
+      else raise NotConvertible
+    | Vword256 i1, Vword256 i2 ->
+      if Primitive_words_runtime.Word256.equal i1 i2 then cu
+      else raise NotConvertible
     | Vfloat64 f1, Vfloat64 f2 ->
         if Float64.(equal (of_float f1) (of_float f2)) then cu
         else raise NotConvertible
@@ -87,7 +102,8 @@ let rec conv_val env pb lvl v1 v2 cu =
         in
         aux lvl (n1-1) b1 b2 0 cu
     | (Vfix e | Vcofix e), _ | _, (Vfix e | Vcofix e) -> Empty.abort e
-    | (Vaccu _ | Vprod _ | Vconst _ | Vint64 _ | Vfloat64 _ | Vstring _ | Varray _ | Vblock _), _ -> raise NotConvertible
+    | (Vaccu _ | Vprod _ | Vconst _ | Vint64 _ | Vword8 _ | Vword16 _ | Vword32 _ | Vword64 _ | Vword128 _ | Vword256 _
+      | Vfloat64 _ | Vstring _ | Varray _ | Vblock _), _ -> raise NotConvertible
 
 and conv_accu env pb lvl k1 k2 cu =
   let n1 = accu_nargs k1 in

@@ -61,6 +61,15 @@ let rec constr_pattern_eq env (p1:constr_pattern) p2 = match p1, p2 with
    QProjection.equal env p1 p2 && constr_pattern_eq env t1 t2
 | PInt i1, PInt i2 ->
    Uint63.equal i1 i2
+| PWord8 i1, PWord8 i2 -> Primitive_words_runtime.Word8.equal i1 i2
+| PWord16 i1, PWord16 i2 -> Primitive_words_runtime.Word16.equal i1 i2
+| PWord32 i1, PWord32 i2 -> Primitive_words_runtime.Word32.equal i1 i2
+| PWord64 i1, PWord64 i2 ->
+   Primitive_words_runtime.Word64.equal i1 i2
+| PWord128 i1, PWord128 i2 ->
+   Primitive_words_runtime.Word128.equal i1 i2
+| PWord256 i1, PWord256 i2 ->
+   Primitive_words_runtime.Word256.equal i1 i2
 | PFloat f1, PFloat f2 ->
    Float64.equal f1 f2
 | PString s1, PString s2 ->
@@ -71,7 +80,7 @@ let rec constr_pattern_eq env (p1:constr_pattern) p2 = match p1, p2 with
 | PExtra e, _ -> Util.Empty.abort e
 | (PRef _ | PVar _ | PEvar _ | PRel _ | PApp _ | PSoApp _
    | PLambda _ | PProd _ | PLetIn _ | PSort _ | PMeta _
-   | PIf _ | PCase _ | PFix _ | PCoFix _ | PProj _ | PInt _
+   | PIf _ | PCase _ | PFix _ | PCoFix _ | PProj _ | PInt _ | PWord8 _ | PWord16 _ | PWord32 _ | PWord64 _ | PWord128 _ | PWord256 _
    | PFloat _ | PString _ | PArray _), _ -> false
 (** FIXME: fixpoint and cofixpoint should be relativized to pattern *)
 
@@ -103,7 +112,7 @@ let rec occurn_pattern : 'a. _ -> 'a constr_pattern_r -> _
       (List.exists (fun (_, nas, p) -> occurn_pattern (Array.length nas + n) p) br)
   | PMeta _ | PSoApp _ -> true
   | PEvar (_,args) -> List.exists (occurn_pattern n) args
-  | PVar _ | PRef _ | PSort _ | PInt _ | PFloat _ | PString _ -> false
+  | PVar _ | PRef _ | PSort _ | PInt _ | PWord8 _ | PWord16 _ | PWord32 _ | PWord64 _ | PWord128 _ | PWord256 _ | PFloat _ | PString _ -> false
   | PFix (_,(_,tl,bl)) ->
      Array.exists (occurn_pattern n) tl || Array.exists (occurn_pattern (n+Array.length tl)) bl
   | PCoFix (_,(_,tl,bl)) ->
@@ -129,7 +138,7 @@ let rec head_pattern_bound (t:constr_pattern) =
         -> raise BoundPattern
     (* Perhaps they were arguments, but we don't beta-reduce *)
     | PLambda _ -> raise BoundPattern
-    | PCoFix _ | PInt _ | PFloat _ | PString _ | PArray _ ->
+    | PCoFix _ | PInt _ | PWord8 _ | PWord16 _ | PWord32 _ | PWord64 _ | PWord128 _ | PWord256 _ | PFloat _ | PString _ | PArray _ ->
       anomaly ~label:"head_pattern_bound" (Pp.str "not a type.")
     | PExtra e -> Util.Empty.abort e
 
@@ -221,6 +230,12 @@ let pattern_of_constr ~broken env sigma t =
        PCoFix (ln,(Array.map binder_name lna,Array.map (pattern_of_constr env) tl,
                   Array.map (pattern_of_constr env') bl))
     | Int i -> PInt i
+    | Word8 i -> PWord8 i
+    | Word16 i -> PWord16 i
+    | Word32 i -> PWord32 i
+    | Word64 i -> PWord64 i
+    | Word128 i -> PWord128 i
+    | Word256 i -> PWord256 i
     | Float f -> PFloat f
     | String s -> PString s
     | Array (_u, t, def, ty) ->
@@ -256,7 +271,7 @@ let map_pattern_with_binders_gen (type a b) g f fgen l : a constr_pattern_r -> b
   | PEvar (ev,ps) -> PEvar (ev, List.map (f l) ps)
   | PExtra x -> fgen l x
   (* Non recursive *)
-  | (PVar _ | PRel _ | PRef _  | PSort _  | PMeta _ | PInt _
+  | (PVar _ | PRel _ | PRef _  | PSort _  | PMeta _ | PInt _ | PWord8 _ | PWord16 _ | PWord32 _ | PWord64 _ | PWord128 _ | PWord256 _
     | PFloat _ | PString _ as x) -> x
 
 let map_pattern_with_binders (type a) g f l (p:a constr_pattern_r) : a constr_pattern_r =
@@ -285,6 +300,7 @@ let rec subst_pattern_gen
   | PEvar _
   | PRel _
   | PInt _
+  | PWord8 _ | PWord16 _ | PWord32 _ | PWord64 _ | PWord128 _ | PWord256 _
   | PFloat _
   | PString _ -> pat
   | PExtra g -> PExtra (gsubst subst g)
@@ -588,6 +604,12 @@ let rec pat_of_raw metas vars : _ -> _ constr_pattern_r = DAst.with_loc_val (fun
       PCoFix (n, (names, tl, cl))
 
   | GInt i -> PInt i
+  | GWord8 i -> PWord8 i
+  | GWord16 i -> PWord16 i
+  | GWord32 i -> PWord32 i
+  | GWord64 i -> PWord64 i
+  | GWord128 i -> PWord128 i
+  | GWord256 i -> PWord256 i
   | GFloat f -> PFloat f
   | GString s -> PString s
   | GPatVar _ | GIf _ | GLetTuple _ | GCases _ | GEvar _ | GArray _ ->

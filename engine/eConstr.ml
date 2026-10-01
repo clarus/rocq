@@ -99,7 +99,7 @@ struct
     (* Despite the type, the sparse list contains no default element *)
     SList.Skip.iter (f h) args
   | Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-  | Construct _ | Int _ | Float _ | String _ -> ()
+  | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ -> ()
   | Cast (c, _, t) -> f h c; f h t
   | Prod (_, t, c) -> f h t; f (liftn_handle 1 h) c
   | Lambda (_, t, c) -> f h t; f (liftn_handle 1 h) c
@@ -128,7 +128,7 @@ struct
     (* Despite the type, the sparse list contains no default element *)
     SList.Skip.iter (f l h) args
   | Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-  | Construct _ | Int _ | Float _ | String _ -> ()
+  | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ -> ()
   | Cast (c, _, t) -> f l h c; f l h t
   | Prod (_, t, c) -> f l h t; f (g l) (liftn_handle 1 h) c
   | Lambda (_, t, c) -> f l h t; f (g l) (liftn_handle 1 h) c
@@ -704,7 +704,7 @@ let iter_with_full_binders env sigma g f n c =
   let open Context.Rel.Declaration in
   match kind sigma c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> ()
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> ()
   | Cast (c,_,t) -> f n c; f n t
   | Prod (na,t,c) -> f n t; f (g (LocalAssum (na, t)) n) c
   | Lambda (na,t,c) -> f n t; f (g (LocalAssum (na, t)) n) c
@@ -1329,7 +1329,7 @@ let kind_of_type sigma t = match kind sigma t with
   | (Rel _ | Meta _ | Var _ | Evar _ | Const _
   | Proj _ | Case _ | Fix _ | CoFix _ | Ind _)
     -> AtomicType (t,[||])
-  | (Lambda _ | Construct _ | Int _ | Float _ | String _ | Array _) -> failwith "Not a type"
+  | (Lambda _ | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _) -> failwith "Not a type"
 
 module Unsafe =
 struct

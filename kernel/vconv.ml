@@ -102,6 +102,21 @@ and conv_whd env pb k whd1 whd2 cu =
       else raise NotConvertible
   | Vint64 i1, Vint64 i2 ->
     if Int64.equal i1 i2 then cu else raise NotConvertible
+  | Vword8 i1, Vword8 i2 ->
+    if Primitive_words_runtime.Word8.equal i1 i2 then cu else raise NotConvertible
+  | Vword16 i1, Vword16 i2 ->
+    if Primitive_words_runtime.Word16.equal i1 i2 then cu else raise NotConvertible
+  | Vword32 i1, Vword32 i2 ->
+    if Primitive_words_runtime.Word32.equal i1 i2 then cu else raise NotConvertible
+  | Vword64 i1, Vword64 i2 ->
+    if Primitive_words_runtime.Word64.equal i1 i2 then cu
+    else raise NotConvertible
+  | Vword128 i1, Vword128 i2 ->
+    if Primitive_words_runtime.Word128.equal i1 i2 then cu
+    else raise NotConvertible
+  | Vword256 i1, Vword256 i2 ->
+    if Primitive_words_runtime.Word256.equal i1 i2 then cu
+    else raise NotConvertible
   | Vfloat64 f1, Vfloat64 f2 ->
     if Float64.(equal (of_float f1) (of_float f2)) then cu
     else raise NotConvertible
@@ -120,6 +135,8 @@ and conv_whd env pb k whd1 whd2 cu =
       conv_val env CONV (k+1) (apply_whd k whd1) (apply_whd k whd2) cu
 
   | Vprod _, _ | Vfix _, _ | Vcofix _, _  | Vconst _, _ | Vint64 _, _
+  | Vword8 _, _ | Vword16 _, _ | Vword32 _, _ | Vword64 _, _
+  | Vword128 _, _ | Vword256 _, _
   | Vfloat64 _, _ | Vstring _, _ | Varray _, _ | Vblock _, _ | Vaccu _, _ -> raise NotConvertible
 
 

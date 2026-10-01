@@ -40,6 +40,12 @@ type 'v node =
 | Lmakeblock    of inductive * int * 'v lambda array
   (* inductive name, constructor tag, arguments *)
 | Luint         of Uint63.t
+| Lword8        of Primitive_words_runtime.Word8.t
+| Lword16       of Primitive_words_runtime.Word16.t
+| Lword32       of Primitive_words_runtime.Word32.t
+| Lword64       of Primitive_words_runtime.Word64.t
+| Lword128      of Primitive_words_runtime.Word128.t
+| Lword256      of Primitive_words_runtime.Word256.t
 | Lfloat        of Float64.t
 | Lstring       of Pstring.t
 | Lval          of 'v
@@ -156,6 +162,20 @@ let rec pp_lam lam =
        prlist_with_sep spc pp_lam (Array.to_list args) ++
        str")")
   | Luint i -> str (Uint63.to_string i)
+  | Lword8 i -> str (Printf.sprintf "0x%02xw8" (Primitive_words_runtime.Word8.to_int i))
+  | Lword16 i -> str (Printf.sprintf "0x%04xw16" (Primitive_words_runtime.Word16.to_int i))
+  | Lword32 i -> str (Printf.sprintf "0x%08lxw32" (Primitive_words_runtime.Word32.to_int32 i))
+  | Lword64 i ->
+    str (Printf.sprintf "0x%016Lxw64"
+      (Primitive_words_runtime.Word64.to_int64 i))
+  | Lword128 i ->
+    let low, high = Primitive_words_runtime.Word128.to_limbs i in
+    str (Printf.sprintf "0x%016Lx%016Lxw128" high low)
+  | Lword256 i ->
+    let limb0, limb1, limb2, limb3 =
+      Primitive_words_runtime.Word256.to_limbs i in
+    str (Printf.sprintf "0x%016Lx%016Lx%016Lx%016Lxw256"
+      limb3 limb2 limb1 limb0)
   | Lfloat f -> str (Float64.to_string f)
   | Lstring s -> str (Printf.sprintf "%S" (Pstring.to_string s))
   | Lval _ -> str "values"
@@ -233,6 +253,7 @@ let decompose_Llam_Llet lam =
 let map_lam_with_binders g f n lam =
   match lam.node with
   | Lrel _ | Lvar _  | Lconst _ | Lval _ | Lsort _ | Lind _ | Lint _ | Luint _
+  | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _
   | Lfloat _ | Lstring _ -> lam
   | Levar (evk, args) ->
     let args' = Array.Smart.map (f n) args in
@@ -302,6 +323,7 @@ let free_rels lam =
   let rec aux k accu lam = match node lam with
   | Lrel (_, n) -> if n >= k then Int.Set.add (n - k + 1) accu else accu
   | Lvar _  | Lconst _ | Lval _ | Lsort _ | Lind _ | Lint _ | Luint _
+  | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _
   | Lfloat _ | Lstring _ -> accu
   | Levar (_, args) ->
     Array.fold_left (fun accu lam -> aux k accu lam) accu args
@@ -380,7 +402,7 @@ let lam_subst_args subst args =
 (* Invariant: Terms in [subst] are already simplified and can be substituted *)
 
 let can_subst lam = match node lam with
-| Lrel _ | Lvar _ | Lconst _ | Luint _
+| Lrel _ | Lvar _ | Lconst _ | Luint _ | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _
 | Lval _ | Lsort _ | Lind _ -> true
 | Levar _ | Lprod _ | Llam _ | Llet _ | Lapp _ | Lcase _ | Lfix _ | Lcofix _
 | Lparray _ | Lmakeblock _ | Lfloat _ | Lstring _ | Lprim _ | Lproj _ -> false
@@ -464,6 +486,7 @@ let rec occurrence k kind lam =
       if kind then false else raise Not_found
     else kind
   | Lvar _  | Lconst _  | Lval _ | Lsort _ | Lind _ | Lint _ | Luint _
+  | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _
   | Lfloat _ | Lstring _ -> kind
   | Levar (_, args) ->
     occurrence_args k kind args
@@ -508,7 +531,7 @@ let occur_once lam =
 (* a lambda or a fix or a cofix                                       *)
 
 let is_value lam = match node lam with
-| Lrel _ | Lvar _ | Lconst _ | Luint _
+| Lrel _ | Lvar _ | Lconst _ | Luint _ | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _
 | Lval _ | Lsort _ | Lind _ | Lint _ | Llam _ | Lfix _ | Lcofix _ | Lfloat _ | Lstring _ -> true
 | Levar _ | Lprod _ | Llet _ | Lapp _ | Lcase _
 | Lparray _ | Lmakeblock _ | Lprim _ | Lproj _ -> false
@@ -758,6 +781,16 @@ let rec lambda_of_constr cache env sigma c =
       mknode @@ Lcofix(init, (names, ltypes, lbodies))
 
   | Int i -> mknode @@ Luint i
+
+  | Word8 i -> mknode @@ Lword8 i
+
+  | Word16 i -> mknode @@ Lword16 i
+
+  | Word32 i -> mknode @@ Lword32 i
+
+  | Word64 i -> mknode @@ Lword64 i
+  | Word128 i -> mknode @@ Lword128 i
+  | Word256 i -> mknode @@ Lword256 i
 
   | Float f -> mknode @@ Lfloat f
 

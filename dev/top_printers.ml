@@ -410,6 +410,20 @@ let constr_display csr =
       ^(array_display bl)^")"
   | Int i ->
       "Int("^(Uint63.to_string i)^")"
+  | Word8 i ->
+      "Word8("^(Primitive_words_runtime.Word8.to_string i)^")"
+  | Word16 i ->
+      "Word16("^(Primitive_words_runtime.Word16.to_string i)^")"
+  | Word32 i ->
+      "Word32("^(Primitive_words_runtime.Word32.to_string i)^")"
+  | Word64 i ->
+      "Word64("^(Int64.to_string (Primitive_words_runtime.Word64.to_int64 i))^")"
+  | Word128 i ->
+      let low, high = Primitive_words_runtime.Word128.to_limbs i in
+      Printf.sprintf "Word128(0x%016Lx%016Lx)" high low
+  | Word256 i ->
+      let l0, l1, l2, l3 = Primitive_words_runtime.Word256.to_limbs i in
+      Printf.sprintf "Word256(0x%016Lx%016Lx%016Lx%016Lx)" l3 l2 l1 l0
   | Float f ->
       "Float("^(Float64.to_string f)^")"
   | String s ->
@@ -572,6 +586,26 @@ let print_pure_constr csr =
       in print_string"{"; print_fix (); print_string"}"
   | Int i ->
      print_string ("Int("^(Uint63.to_string i)^")")
+  | Word8 i ->
+      print_string "Word8(";
+      print_string (Primitive_words_runtime.Word8.to_string i);
+      print_string ")"
+  | Word16 i ->
+      print_string "Word16(";
+      print_string (Primitive_words_runtime.Word16.to_string i);
+      print_string ")"
+  | Word32 i ->
+      print_string "Word32(";
+      print_string (Primitive_words_runtime.Word32.to_string i);
+      print_string ")"
+  | Word64 i ->
+     print_string ("Word64("^(Int64.to_string (Primitive_words_runtime.Word64.to_int64 i))^")")
+  | Word128 i ->
+     let low, high = Primitive_words_runtime.Word128.to_limbs i in
+     Printf.printf "Word128(0x%016Lx%016Lx)" high low
+  | Word256 i ->
+     let l0, l1, l2, l3 = Primitive_words_runtime.Word256.to_limbs i in
+     Printf.printf "Word256(0x%016Lx%016Lx%016Lx%016Lx)" l3 l2 l1 l0
   | Float f ->
       print_string ("Float("^(Float64.to_string f)^")")
   | String s ->

@@ -40,6 +40,7 @@ type caml_prim =
 | CAML_Stringsub
 | CAML_Stringcat
 | CAML_Stringcompare
+| CAML_Word of CPrimitives.word_width * CPrimitives.word_op
 
 type instruction =
   | Klabel of Label.t
@@ -103,6 +104,7 @@ let caml_prim_to_prim = function
 | CAML_Stringsub -> CPrimitives.Stringsub
 | CAML_Stringcat -> CPrimitives.Stringcat
 | CAML_Stringcompare -> CPrimitives.Stringcompare
+| CAML_Word (width, op) -> CPrimitives.Word (width, op)
 
 let pp_lbl lbl = str "L" ++ int lbl
 

@@ -1252,7 +1252,7 @@ let rec whd_state_gen ?csts flags env sigma =
         |_ -> fold ()
       else fold ()
 
-    | _, (Int _ | Float _ | String _ | Array _) ->
+    | _, (Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _) ->
       begin match reduce_primitive_value () with
       | Some res -> res
       | None ->

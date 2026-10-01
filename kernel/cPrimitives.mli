@@ -8,6 +8,15 @@
 (*         *     (see LICENSE file for the text of the license)         *)
 (************************************************************************)
 
+type word_width = Word8 | Word16 | Word32 | Word64 | Word128 | Word256
+
+type word_op =
+  | Wneg | Wadd | Wsub | Wmul
+  | Wland | Wlor | Wlxor | Wlnot
+  | Weq | Wltu | Wleu | Wlts | Wles
+  | Wlsl | Wlsr | Wasr
+  | Wdivu | Wmodu | Wdivs | Wrems
+
 type t =
   | Int63head0
   | Int63tail0
@@ -39,6 +48,7 @@ type t =
   | Int63les
   | Int63compare
   | Int63compares
+  | Word of word_width * word_op
   | Float64opp
   | Float64abs
   | Float64eq
@@ -104,6 +114,12 @@ val kind : t -> args_red
 
 type 'a prim_type =
   | PT_int63 : unit prim_type
+  | PT_word8 : unit prim_type
+  | PT_word16 : unit prim_type
+  | PT_word32 : unit prim_type
+  | PT_word64 : unit prim_type
+  | PT_word128 : unit prim_type
+  | PT_word256 : unit prim_type
   | PT_float64 : unit prim_type
   | PT_string : unit prim_type
   | PT_array : (UVars.Instance.t * ind_or_type) prim_type

@@ -223,6 +223,18 @@ let rec pp_expr table par env args =
     | MLaxiom s -> pp_par par (str "Prelude.error \"AXIOM TO BE REALIZED (" ++ str s ++ str ")\"")
     | MLuint _ ->
       pp_par par (str "Prelude.error \"EXTRACTION OF UINT NOT IMPLEMENTED\"")
+    | MLword8 _ ->
+      pp_par par (str "Prelude.error \"EXTRACTION OF WORD8 NOT IMPLEMENTED\"")
+    | MLword16 _ ->
+      pp_par par (str "Prelude.error \"EXTRACTION OF WORD16 NOT IMPLEMENTED\"")
+    | MLword32 _ ->
+      pp_par par (str "Prelude.error \"EXTRACTION OF WORD32 NOT IMPLEMENTED\"")
+    | MLword64 _ ->
+      pp_par par (str "Prelude.error \"EXTRACTION OF WORD64 NOT IMPLEMENTED\"")
+    | MLword128 _ ->
+      pp_par par (str "Prelude.error \"EXTRACTION OF WORD128 NOT IMPLEMENTED\"")
+    | MLword256 _ ->
+      pp_par par (str "Prelude.error \"EXTRACTION OF WORD256 NOT IMPLEMENTED\"")
     | MLfloat _ ->
       pp_par par (str "Prelude.error \"EXTRACTION OF FLOAT NOT IMPLEMENTED\"")
     | MLstring _ ->

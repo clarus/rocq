@@ -177,7 +177,7 @@ let fold_with_full_binders g f n acc c =
   let open Context.Rel.Declaration in
   let open Constr in
   match kind c with
-  | Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _ | Construct _  | Int _ | Float _ | String _ -> acc
+  | Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _ | Construct _  | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ -> acc
   | Cast (c,_, t) -> f n (f n acc c) t
   | Prod (na,t,c) -> f (g (LocalAssum (na,t)) n) (f n acc t) c
   | Lambda (na,t,c) -> f (g (LocalAssum (na,t)) n) (f n acc t) c

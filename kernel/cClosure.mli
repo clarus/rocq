@@ -50,6 +50,12 @@ type fterm =
   | FLetIn of Name.t binder_annot * fconstr * fconstr * constr * usubs
   | FEvar of Evar.t * constr list * usubs * evar_repack
   | FInt of Uint63.t
+  | FWord8 of Primitive_words_runtime.Word8.t
+  | FWord16 of Primitive_words_runtime.Word16.t
+  | FWord32 of Primitive_words_runtime.Word32.t
+  | FWord64 of Primitive_words_runtime.Word64.t
+  | FWord128 of Primitive_words_runtime.Word128.t
+  | FWord256 of Primitive_words_runtime.Word256.t
   | FFloat of Float64.t
   | FString of Pstring.t
   | FArray of UVars.Instance.t * fconstr Parray.t * fconstr

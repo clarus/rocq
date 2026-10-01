@@ -52,7 +52,7 @@ let rec is_lazy env t =
   | Array (_, t, d, _) -> Array.exists (fun t -> is_lazy env t) t || is_lazy env d
   | Cast (c, _, _) | Prod (_, c, _) -> is_lazy env c
   | Const (c, _) -> get_const_lazy env c
-  | Rel _ | Meta _ | Var _ | Sort _ | Ind _ | Construct _ | Int _
+  | Rel _ | Meta _ | Var _ | Sort _ | Ind _ | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _
   | Float _ | String _ | Lambda _ | Evar _ | Fix _ | CoFix _ ->
     false
 
@@ -1277,6 +1277,11 @@ let compile_prim env decl cond paux =
           | CPrimitives.PT_float64 -> Is_float
           | CPrimitives.PT_array -> Is_parray
           | CPrimitives.PT_int63 -> assert false
+          | CPrimitives.PT_word8 | CPrimitives.PT_word16
+          | CPrimitives.PT_word32 | CPrimitives.PT_word64 ->
+            CErrors.user_err Pp.(str "Rocq native evaluation of primitive words is unsupported; use vm_compute")
+          | CPrimitives.PT_word128 | CPrimitives.PT_word256 ->
+            CErrors.user_err Pp.(str "Rocq native evaluation of primitive words is unsupported; use vm_compute")
           | CPrimitives.PT_string -> Is_string
           in
            List.fold_left
@@ -1545,6 +1550,9 @@ let compile_prim env decl cond paux =
      let args = Array.map (ml_of_lam env l) args in
      MLconstruct(prefix,cn,tag,args)
   | Luint i -> MLprimitive (Mk_uint, [|MLuint i|])
+  | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _ ->
+    CErrors.user_err
+      Pp.(str "Rocq native evaluation of primitive words is unsupported; use vm_compute")
   | Lfloat f -> MLprimitive (Mk_float, [|MLfloat f|])
   | Lstring s -> MLprimitive (Mk_string, [|MLstring s|])
   | Lparray (t,def) ->
