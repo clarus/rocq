@@ -988,13 +988,17 @@ let rec whd_state_gen ?csts flags env sigma =
           let s = extra_args @ s in
           let args = Option.get (Stack.list_of_app_stack (rargs @ Stack.append_app [|x|] args)) in
           let args = Array.of_list args in
+          (* A successful primitive step consumes the call's arguments, so its
+             refolding candidates no longer describe the resulting state.
+             As for iota reduction, discard them while keeping the residual
+             stack (and the refolding information in its enclosing frames). *)
           Some
             (match reduce_array_primitive sigma u p args with
-             | Some t -> whrec cst_l' (t,s)
+             | Some t -> whrec Cst_stack.empty (t,s)
              | None ->
                let args = Array.map CbnClos.force args in
                match CredNative.red_prim env sigma p u args with
-               | Some t -> whrec cst_l' (CbnClos.inject t,s)
+               | Some t -> whrec Cst_stack.empty (CbnClos.inject t,s)
                | None -> ((CbnClos.inject (mkApp (mkConstU kn, args)), s), cst_l))
       | _ -> None
     in

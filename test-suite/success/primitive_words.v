@@ -49,3 +49,29 @@ Proof. vm_compute; reflexivity. Qed.
 Fail Check 115792089237316195423570985008687907853269984665640564039457584007913129639936%word256.
 Fail Check (-1)%word256.
 Fail Check (0%word8 : Word16.word16).
+
+(* Primitive aliases must compute with cbn at every native word width (#22550). *)
+Module CbnAliases.
+  Definition add8 := Word8.add.
+  Definition add16 := Word16.add.
+  Definition add32 := Word32.add.
+  Definition add64 := Word64.add.
+  Definition add128 := Word128.add.
+  Definition add256 := Word256.add.
+  Goal True.
+  Proof.
+    let actual := eval cbn in (add8 255%word8 1%word8) in
+    constr_eq actual 0%word8.
+    let actual := eval cbn in (add16 65535%word16 1%word16) in
+    constr_eq actual 0%word16.
+    let actual := eval cbn in (add32 4294967295%word32 1%word32) in
+    constr_eq actual 0%word32.
+    let actual := eval cbn in (add64 18446744073709551615%word64 1%word64) in
+    constr_eq actual 0%word64.
+    let actual := eval cbn in (add128 340282366920938463463374607431768211455%word128 1%word128) in
+    constr_eq actual 0%word128.
+    let actual := eval cbn in (add256 115792089237316195423570985008687907853269984665640564039457584007913129639935%word256 1%word256) in
+    constr_eq actual 0%word256.
+    exact I.
+  Qed.
+End CbnAliases.
