@@ -923,6 +923,11 @@ and detype_r d flags avoid env sigma t =
     | Word256 i -> GWord256 i
     | Float f -> GFloat f
     | String s -> GString s
+    | Array64 (u, chunks, ty) ->
+      let chunks = Array64chunks.map (detype d flags avoid env sigma) chunks in
+      let ty = detype d flags avoid env sigma ty in
+      let u = detype_instance ~flags sigma u in
+      Glob_ops.array64_literal u chunks ty
     | Array(u,t,def,ty) ->
       let t = Array.map (detype d flags avoid env sigma) t in
       let def = detype d flags avoid env sigma def in

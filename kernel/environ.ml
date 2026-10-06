@@ -924,6 +924,11 @@ let is_array_type env c =
   | None -> false
   | Some c' -> Constant.CanOrd.equal c c'
 
+let is_array64_type env c =
+  match env.retroknowledge.Retroknowledge.retro_array64 with
+  | None -> false
+  | Some c' -> Constant.CanOrd.equal c c'
+
 let is_primitive_type env c =
   (* dummy match to force an update if we add a primitive type *)
   let _ =
@@ -937,11 +942,12 @@ let is_primitive_type env c =
     | CPrimitives.(PTE(PT_word256))
     | CPrimitives.(PTE(PT_float64))
     | CPrimitives.(PTE(PT_string))
-    | CPrimitives.(PTE(PT_array)) -> ()
+    | CPrimitives.(PTE(PT_array))
+    | CPrimitives.(PTE(PT_array64)) -> ()
   in
   is_int63_type env c || is_word8_type env c || is_word16_type env c ||
   is_word32_type env c || is_word64_type env c || is_word128_type env c || is_word256_type env c ||
-  is_float64_type env c || is_array_type env c ||
+  is_float64_type env c || is_array_type env c || is_array64_type env c ||
   is_string_type env c
 
 let polymorphic_constant cst env =

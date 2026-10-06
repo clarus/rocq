@@ -290,6 +290,7 @@ let hash_kind = let open Hashset.Combine in function
   | Word256 i -> combinesmall 24 (Primitive_words_runtime.Word256.hash i)
   | Float f -> combinesmall 25 (Float64.hash f)
   | String s -> combinesmall 26 (Pstring.hash s)
+  | Array64(u,t,ty) -> combinesmall 28 (combine3 (UVars.Instance.hash u) (Array64chunks.fold_left (fun h x -> combine x.hash h) 0 t) ty.hash)
   | Array (u,t,def,ty) -> combinesmall 27 (combine4 (UVars.Instance.hash u) (hash_array hash t) def.hash ty.hash)
 
 let kind_to_constr = function
@@ -326,6 +327,7 @@ let kind_to_constr = function
   | Word256 i -> mkWord256 i
   | Float f -> mkFloat f
   | String s -> mkString s
+  | Array64(u,t,ty) -> mkArray64(u,Array64chunks.map self t,ty.self)
   | Array (u,t,def,ty) -> mkArray (u,Array.map self t,def.self,ty.self)
 
 let of_kind_nohashcons = function
@@ -473,6 +475,9 @@ and of_constr_aux henv c =
   | Word256 _ as t -> t
   | Float _ as t -> t
   | String _ as t -> t
+  | Array64(u,t,ty) ->
+    let _, u = UVars.Instance.hcons u in
+    Array64(u,Array64chunks.map (of_constr henv) t,of_constr henv ty)
   | Array (u,t,def,ty) ->
     let _, u = UVars.Instance.hcons u in
     let t = Array.map (of_constr henv) t in

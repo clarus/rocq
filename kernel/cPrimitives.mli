@@ -17,6 +17,10 @@ type word_op =
   | Wlsl | Wlsr | Wasr
   | Wdivu | Wmodu | Wdivs | Wrems
 
+type array64_op =
+  | A64empty | A64repeat | A64length | A64get
+  | A64set | A64slice | A64replace | A64concat
+
 type t =
   | Int63head0
   | Int63tail0
@@ -80,6 +84,7 @@ type t =
   | Stringsub
   | Stringcat
   | Stringcompare
+  | Array64 of array64_op
 
 (** Can raise [Not_found].
     Beware that this is not exactly the reverse of [to_string] below. *)
@@ -102,6 +107,8 @@ val hash : t -> int
 
 val to_string : t -> string
 
+val array64_op_to_string : array64_op -> string
+
 val arity : t -> int
 (** Including parameters *)
 
@@ -123,11 +130,13 @@ type 'a prim_type =
   | PT_float64 : unit prim_type
   | PT_string : unit prim_type
   | PT_array : (UVars.Instance.t * ind_or_type) prim_type
+  | PT_array64 : (UVars.Instance.t * ind_or_type) prim_type
 
 and 'a prim_ind =
   | PIT_bool : unit prim_ind
   | PIT_carry : ind_or_type prim_ind
   | PIT_pair : (ind_or_type * ind_or_type) prim_ind
+  | PIT_option : ind_or_type prim_ind
   | PIT_cmp : unit prim_ind
   | PIT_f_cmp : unit prim_ind
   | PIT_f_class : unit prim_ind

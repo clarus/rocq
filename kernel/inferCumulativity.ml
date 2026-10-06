@@ -245,6 +245,11 @@ let rec infer_fterm cv_pb infos variances hd stk =
       infer_vect infos variances (Array.map (mk_clos le) cl)
     in
     infer_stack infos variances stk
+  | FArray64 (u,elems,ty) ->
+    let variances = infer_generic_instance_eq variances (instance_univs u) in
+    let variances = infer_fterm CONV infos variances ty [] in
+    let variances = Parray64.fold_left (fun v x -> infer_fterm CONV infos v x []) variances elems in
+    infer_stack infos variances stk
   | FArray (u,elemsdef,ty) ->
     let variances = infer_generic_instance_eq variances (instance_univs u) in
     let variances = infer_fterm CONV infos variances ty [] in

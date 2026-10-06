@@ -27,9 +27,11 @@ type retroknowledge = {
     retro_float64 : Constant.t option;
     retro_string : Constant.t option;
     retro_array : Constant.t option;
+    retro_array64 : Constant.t option;
     retro_bool : (constructor * constructor) option; (* true, false *)
     retro_carry : (constructor * constructor) option; (* C0, C1 *)
     retro_pair : constructor option;
+    retro_option : (constructor * constructor) option; (* Some, None *)
     retro_cmp : (constructor * constructor * constructor) option;
                     (* Eq, Lt, Gt *)
     retro_f_cmp : (constructor * constructor * constructor * constructor)
@@ -55,9 +57,11 @@ let empty = {
     retro_float64 = None;
     retro_string = None;
     retro_array = None;
+    retro_array64 = None;
     retro_bool = None;
     retro_carry = None;
     retro_pair = None;
+    retro_option = None;
     retro_cmp = None;
     retro_f_cmp = None;
     retro_f_class = None;

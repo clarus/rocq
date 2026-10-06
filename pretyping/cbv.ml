@@ -52,6 +52,7 @@ type cbv_value =
   | COFIX of cofixpoint * cbv_value subs * cbv_value list
   | CONSTRUCT of constructor UVars.puniverses * cbv_value list
   | PRIMITIVE of CPrimitives.t * pconstant * cbv_value list
+  | ARRAY64 of UVars.Instance.t * cbv_value Parray64.t * cbv_value
   | ARRAY of UVars.Instance.t * cbv_value Parray.t * cbv_value
   | SYMBOL of { cst: Constant.t UVars.puniverses; unfoldfix: bool; rules: Declarations.machine_rewrite_rule list; stk: cbv_stack }
 
@@ -99,6 +100,7 @@ let rec shift_value n = function
       CONSTRUCT (c, List.map (shift_value n) args)
   | PRIMITIVE(op,c,args) ->
       PRIMITIVE(op,c,List.map (shift_value n) args)
+  | ARRAY64(u,t,ty) -> ARRAY64(u, Parray64.map (shift_value n) t, shift_value n ty)
   | ARRAY (u,t,ty) ->
       ARRAY(u, Parray.map (shift_value n) t, shift_value n ty)
   | SYMBOL s -> SYMBOL { s with stk = shift_stack n s.stk }
@@ -192,7 +194,7 @@ let strip_appl head stack =
     | COFIX (cofix,env,app) -> (COFIX(cofix,env,[]), stack_app app stack)
     | CONSTRUCT (c,app) -> (CONSTRUCT(c,[]), stack_app app stack)
     | PRIMITIVE(op,c,app) -> (PRIMITIVE(op,c,[]), stack_app app stack)
-    | LETIN _ | VAL _ | STACK _ | PROD _ | LAMBDA _ | ARRAY _ | SYMBOL _ -> (head, stack)
+    | LETIN _ | VAL _ | STACK _ | PROD _ | LAMBDA _ | ARRAY _ | ARRAY64 _ | SYMBOL _ -> (head, stack)
 
 let destack head stack =
   match head with
@@ -202,7 +204,7 @@ let destack head stack =
   | PRIMITIVE(op,c,app) -> (PRIMITIVE(op,c,[]), stack_app app stack)
   | STACK (k, v, stk) -> (shift_value k v, stack_concat (shift_stack k stk) stack)
   | SYMBOL ({ stk } as s) -> (SYMBOL { s with stk=TOP }, stack_concat stk stack)
-  | LETIN _ | VAL _ | PROD _ | LAMBDA _ | ARRAY _ -> (head, stack)
+  | LETIN _ | VAL _ | PROD _ | LAMBDA _ | ARRAY _ | ARRAY64 _ -> (head, stack)
 
 let rec fixp_reducible_symb_stk = function
   | TOP -> true
@@ -299,6 +301,10 @@ module VNativeEntries =
         (match kind cf with
         | String s -> s
         | _ -> raise Primred.NativeDestKO)
+      | _ -> raise Primred.NativeDestKO
+
+    let get_array64 () = function
+      | ARRAY64(_,t,_) -> t
       | _ -> raise Primred.NativeDestKO
 
     let get_parray () e =
@@ -415,6 +421,19 @@ module VNativeEntries =
         get_f_class_constructors env in
       CONSTRUCT(UVars.in_punivs nan, [])
 
+    let mkArray64 env u t ty = ARRAY64(u,t,ty)
+
+    let mkArray64Type env u ty =
+      STACK(0, VAL(0, mkConstU (get_array64_type env,u)), APP([ty],TOP))
+
+    let mkSome env ty v =
+      let some, _ = get_option_constructors env in
+      CONSTRUCT(UVars.in_punivs some, [ty;v])
+
+    let mkNone env ty =
+      let _, none = get_option_constructors env in
+      CONSTRUCT(UVars.in_punivs none, [ty])
+
     let mkArray env u t ty =
       ARRAY (u,t,ty)
   end
@@ -461,6 +480,8 @@ and reify_value = function (* reduction under binders *)
       mkApp(mkConstructU c, Array.map_of_list reify_value args)
   | PRIMITIVE(op,c,args) ->
       mkApp(mkConstU c, Array.map_of_list reify_value args)
+  | ARRAY64(u,t,ty) ->
+      mkArray64(u, Array64chunks.of_arrays (Parray64.to_chunks (Parray64.map reify_value t)), reify_value ty)
   | ARRAY (u,t,ty) ->
     let t, def = Parray.to_array t in
       mkArray(u, Array.map reify_value t, reify_value def, reify_value ty)
@@ -605,6 +626,10 @@ let rec norm_head info env t stack =
   | CoFix cofix -> (COFIX(cofix,env,[]), stack)
   | Construct c -> (CONSTRUCT(c, []), stack)
 
+  | Array64(u,t,ty) ->
+    let ty = cbv_stack_term info TOP env ty in
+    let t = Array64chunks.map (cbv_stack_term info TOP env) t in
+    (ARRAY64(u,Parray64.of_chunks (Array64chunks.to_arrays t),ty), stack)
   | Array(u,t,def,ty) ->
     let ty = cbv_stack_term info TOP env ty in
     let len = Array.length t in
@@ -1012,6 +1037,8 @@ and cbv_norm_value info = function
       mkApp(mkConstructU c, Array.map_of_list (cbv_norm_value info) args)
   | PRIMITIVE(op,c,args) ->
       mkApp(mkConstU c,Array.map_of_list (cbv_norm_value info) args)
+  | ARRAY64(u,t,ty) ->
+      mkArray64(u, Array64chunks.of_arrays (Parray64.to_chunks (Parray64.map (cbv_norm_value info) t)), cbv_norm_value info ty)
   | ARRAY (u,t,ty) ->
     let ty = cbv_norm_value info ty in
     let t, def = Parray.to_array t in

@@ -83,6 +83,7 @@ val type_of_word256 : env -> types
 val type_of_float : env -> types
 val type_of_string : env -> types
 val type_of_array : env -> UVars.Instance.t -> types
+val type_of_array64 : env -> UVars.Instance.t -> types
 val type_of_prim_type : env -> UVars.Instance.t -> 'a CPrimitives.prim_type -> types
 val type_of_prim : env -> UVars.Instance.t -> CPrimitives.t -> types
 val type_of_prim_or_type : env -> UVars.Instance.t -> CPrimitives.op_or_type -> types

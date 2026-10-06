@@ -428,6 +428,7 @@ let constr_display csr =
       "Float("^(Float64.to_string f)^")"
   | String s ->
       Printf.sprintf "String(%S)" (Pstring.to_string s)
+  | Array64(u,t,ty) -> "Array64(" ^ String.concat ";" (List.map array_display (Array64chunks.to_arrays t)) ^ ":" ^ term_display ty ^ ")@{" ^ universes_display u ^ "}"
   | Array (u,t,def,ty) -> "Array("^(array_display t)^","^(term_display def)^","^(term_display ty)^")@{" ^universes_display u^"\n"
 
   and array_display v =
@@ -610,6 +611,11 @@ let print_pure_constr csr =
       print_string ("Float("^(Float64.to_string f)^")")
   | String s ->
       print_string (Printf.sprintf "String(%S)" (Pstring.to_string s))
+  | Array64(u,t,ty) ->
+      print_string "Array64(";
+      Array64chunks.iter (fun x -> box_display x; print_space()) t;
+      print_string ":"; box_display ty; print_string ")@{";
+      universes_display u; print_string "}"
   | Array (u,t,def,ty) ->
       print_string "Array(";
       Array.iter (fun x -> box_display x; print_space()) t;

@@ -36,6 +36,7 @@ type 'v node =
 | Lcofix        of int * 'v fix_decl
 | Lint          of int
 | Lparray       of 'v lambda array * 'v lambda
+| Larray64      of 'v lambda array list
 | Lmakeblock    of inductive * int * 'v lambda array
   (* inductive name, constructor tag, arguments *)
 | Luint         of Uint63.t

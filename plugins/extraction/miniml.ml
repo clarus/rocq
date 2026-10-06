@@ -198,6 +198,7 @@ and ml_ast =
   | MLfloat  of Float64.t
   | MLstring of Pstring.t
   | MLparray of ml_ast array * ml_ast
+  | MLarray64 of ml_ast array list
 
 and ml_pattern =
   | Pcons   of global * ml_pattern list

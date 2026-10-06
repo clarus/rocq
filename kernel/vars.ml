@@ -293,7 +293,7 @@ let map_constr_relevance f c =
   | Rel _ | Var _ | Meta _ | Evar _
   |  Sort _ | Cast _ | App _
   | Const _ | Ind _ | Construct _
-  | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> c
+  | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> c
 
   | Prod (na,x,y) ->
     let na' = map_annot_relevance f na in
@@ -340,7 +340,7 @@ let fold_kind_relevance f acc c =
   | Rel _ | Var _ | Meta _ | Evar _
   |  Sort _ | Cast _ | App _
   | Const _ | Ind _ | Construct _
-  | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> acc
+  | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> acc
 
   | Prod (na,_,_) | Lambda (na,_,_) | LetIn (na,_,_,_) ->
     fold_annot_relevance f acc na
@@ -398,6 +398,12 @@ let subst_univs_level_constr subst c =
           if u' == u then Constr.map aux t
           else (changed:=true; Constr.map aux (mkCase (ci,u',pms,p,iv,c,br)))
 
+      | Array64 (u,elems,ty) ->
+        let u' = f u in
+        let elems' = Array64chunks.smartmap aux elems in
+        let ty' = aux ty in
+        if u == u' && elems == elems' && ty == ty' then t
+        else (changed := true; mkArray64(u',elems',ty'))
       | Array (u,elems,def,ty) ->
         let u' = f u in
         let elems' = CArray.Smart.map aux elems in
@@ -453,6 +459,12 @@ let subst_instance_constr subst c =
         if u' == u then Constr.map aux t
         else Constr.map aux (mkCase (ci,u',pms,p,iv,c,br))
 
+      | Array64 (u,elems,ty) ->
+        let u' = f u in
+        let elems' = Array64chunks.smartmap aux elems in
+        let ty' = aux ty in
+        if u == u' && elems == elems' && ty == ty' then t
+        else mkArray64(u',elems',ty')
       | Array (u,elems,def,ty) ->
         let u' = f u in
         let elems' = CArray.Smart.map aux elems in
@@ -522,7 +534,7 @@ let visit_kind_univs visit acc c =
   match c with
   | Const (_, u) | Ind (_, u) | Construct (_,u) -> visit.visit_instance acc u
   | Sort s -> visit.visit_sort acc s
-  | Array (u,_,_,_) ->
+  | Array64 (u,_,_) | Array (u,_,_,_) ->
     let acc = visit.visit_instance acc u in
     acc
   | Case (_, u, _, _, _,_ ,_) ->

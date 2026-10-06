@@ -227,7 +227,7 @@ let constr_val_discr env sigma ts t : constr_res =
         | Everything -> Everything
       end
     | Rel _ | Meta _ | LetIn _ | Fix _ | CoFix _
-    | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> Nothing
+    | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> Nothing
     in
     debug Pp.(fun () -> str "constr_val_discr.decomp output: " ++ pr_constr_res (Printer.pr_leconstr_env env sigma) out);
     out

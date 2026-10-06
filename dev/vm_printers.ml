@@ -95,6 +95,7 @@ and ppwhd whd =
   | Vfloat64 f -> printf "float64(%.17g)" f
   | Vstring s -> printf "string(%S)" (Pstring.to_string s)
   | Varray t -> ppvarray t
+  | Varray64 _ -> print_string "array64"
   | Vaccu (a, s) ->
       open_hbox();ppatom a;close_box();
       print_string"@";ppstack s

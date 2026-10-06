@@ -607,6 +607,10 @@ let map_constr_with_binders_left_to_right env sigma g f l c =
         if Array.for_all2 (==) tl tl' && Array.for_all2 (==) bl bl'
         then c
         else mkCoFix (ln,(lna,tl',bl'))
+  | Array64(u,t,ty) ->
+      let t' = Array64chunks.smartmap (f l) t in
+      let ty' = f l ty in
+      if t == t' && ty == ty' then c else mkArray64(u,t',ty')
   | Array(u,t,def,ty) ->
       let t' = Array.map_left (f l) t in
       let def' = f l def in
@@ -674,6 +678,10 @@ let map_constr_with_full_binders env sigma g f l cstr =
       if Array.for_all2 (==) tl tl' && Array.for_all2 (==) bl bl'
       then cstr
       else mkCoFix (ln,(lna,tl',bl'))
+  | Array64(u,t,ty) ->
+      let t' = Array64chunks.smartmap (f l) t in
+      let ty' = f l ty in
+      if t == t' && ty == ty' then cstr else mkArray64(u,t',ty')
   | Array(u,t,def,ty) ->
       let t' = Array.Smart.map (f l) t in
       let def' = f l def in
@@ -713,6 +721,7 @@ let fold_constr_with_full_binders env sigma g f n acc c =
       let n' = CArray.fold_left2_i (fun i c n t -> g (LocalAssum (n,lift i t)) c) n lna tl in
       let fd = Array.map2 (fun t b -> (t,b)) tl bl in
       Array.fold_left (fun acc (t,b) -> f n' (f n acc t) b) acc fd
+  | Array64(_,t,ty) -> f n (Array64chunks.fold_left (f n) acc t) ty
   | Array(_u,t,def,ty) -> f n (f n (Array.fold_left (f n) acc t) def) ty
 
 (***************************)
@@ -1347,6 +1356,9 @@ let constr_ord_int f t1 t2 =
     | Float _, _ -> -1 | _, Float _ -> 1
     | String s1, String s2 -> Pstring.compare s1 s2
     | String _, _ -> -1 | _, String _ -> 1
+    | Array64(_,t1,ty1), Array64(_,t2,ty2) ->
+      let n = Array64chunks.compare f t1 t2 in if n = 0 then f ty1 ty2 else n
+    | Array64 _, _ -> -1 | _, Array64 _ -> 1
     | Array(_u1,t1,def1,ty1), Array(_u2,t2,def2,ty2) ->
       compare [(Array.compare f, t1, t2); (f, def1, def2); (f, ty1, ty2)]
     (*| Array _, _ -> -1 | _, Array _ -> 1*)
@@ -1405,6 +1417,7 @@ let rec hash t =
     | Word256 i -> combinesmall 24 (Primitive_words_runtime.Word256.hash i)
     | Float f -> combinesmall 25 (Float64.hash f)
     | String s -> combinesmall 26 (Pstring.hash s)
+    | Array64(u,t,ty) -> combinesmall 28 (combine3 (Instance.hash u) (Array64chunks.hash hash t) (hash ty))
     | Array(u,t,def,ty) ->
       combinesmall 27 (combine4 (Instance.hash u) (hash_term_array t) (hash def) (hash ty))
 

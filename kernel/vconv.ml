@@ -123,6 +123,12 @@ and conv_whd env pb k whd1 whd2 cu =
   | Vstring s1, Vstring s2 ->
     if Pstring.equal s1 s2 then cu
     else raise NotConvertible
+  | Varray64 t1, Varray64 t2 ->
+    if t1 == t2 then cu else begin
+      if not (Primitive_words_runtime.Word64.equal (Parray64.length t1) (Parray64.length t2))
+      then raise NotConvertible;
+      Parray64.fold_left2 (fun cu v1 v2 -> conv_val env CONV k v1 v2 cu) cu t1 t2
+    end
   | Varray t1, Varray t2 ->
     if t1 == t2 then cu else
     let n = Parray.length_int t1 in
@@ -137,7 +143,7 @@ and conv_whd env pb k whd1 whd2 cu =
   | Vprod _, _ | Vfix _, _ | Vcofix _, _  | Vconst _, _ | Vint64 _, _
   | Vword8 _, _ | Vword16 _, _ | Vword32 _, _ | Vword64 _, _
   | Vword128 _, _ | Vword256 _, _
-  | Vfloat64 _, _ | Vstring _, _ | Varray _, _ | Vblock _, _ | Vaccu _, _ -> raise NotConvertible
+  | Vfloat64 _, _ | Vstring _, _ | Varray _, _ | Varray64 _, _ | Vblock _, _ | Vaccu _, _ -> raise NotConvertible
 
 
 and conv_atom env pb k a1 stk1 a2 stk2 cu =

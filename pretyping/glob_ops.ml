@@ -17,6 +17,22 @@ open Evar_kinds
 
 (* Untyped intermediate terms, after ASTs and before constr. *)
 
+(* Array64 literals print as a construction expression, keeping the
+   parser and existing primitive-array syntax unchanged. *)
+let array64_literal u chunks ty =
+  let reference name u = DAst.make (GRef (Rocqlib.lib_ref name, u)) in
+  let of_list =
+    if Rocqlib.has_ref "core.array64.literal_of_list" then reference "core.array64.literal_of_list" u
+    else CErrors.user_err Pp.(str "Printing Array64 literals requires importing Corelib.Array.PrimArray64") in
+  let nil = DAst.make (GApp (reference "core.list.nil" None, [ty])) in
+  let cons = reference "core.list.cons" None in
+  let elems = Array64chunks.fold_right (fun x xs ->
+    (* List notation hides cons's type parameter. Preserve each element's
+       expected type so cumulativity cannot infer a smaller list universe. *)
+    let x = DAst.make (GCast (x, Some Constr.DEFAULTcast, ty)) in
+    DAst.make (GApp (cons, [ty; x; xs]))) chunks nil in
+  GApp (of_list, [ty; elems])
+
 let cases_pattern_loc c = c.CAst.loc
 
 let alias_of_pat pat = DAst.with_val (function

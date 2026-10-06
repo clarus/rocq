@@ -75,20 +75,23 @@ def primitive_smoke():
 
 def object_versions():
     original = (WORK / "PrimitiveSmoke.vo").read_bytes()
-    if struct.unpack(">I", original[4:8])[0] != 90347:
+    if struct.unpack(">I", original[4:8])[0] != 90348:
         raise SystemExit("New object has incorrect version header")
-    for version in (90300, 90346):
+    for version in (90300, 90346, 90347):
         name = f"Version{version}.vo"
         (WORK / name).write_bytes(original[:4] + struct.pack(">I", version) + original[8:])
         log = run(f"reject-format-{version}", ["rocq", "check", WORK / name], fail=True)
-        if f"{version}" not in log or "90347" not in log:
+        if f"{version}" not in log or "90348" not in log:
             raise SystemExit("Missing object version rejection diagnostic")
-    stock = Path(os.environ.get("NATIVE_INTEGER_STOCK_ROCQ", "/home/fedora/.opam/rocq-9.3.0/bin/rocq"))
+    stock = Path(os.environ.get("NATIVE_INTEGER_STOCK_ROCQ", ""))
     if not stock.is_file():
         raise SystemExit("Set NATIVE_INTEGER_STOCK_ROCQ to a stock Rocq executable")
     stock_env = os.environ.copy()
     for name in ("OCAMLPATH", "ROCQLIB", "ROCQPATH", "COQLIB", "COQPATH"):
         stock_env.pop(name, None)
+    # Stock OCaml 5 reserves minor heaps for 128 domains by default. These
+    # sequential compatibility checks need one, including under RLIMIT_AS.
+    stock_env["OCAMLRUNPARAM"] = stock_env.get("OCAMLRUNPARAM", "") + ",d=1"
     (WORK / "StockObject.v").write_text("Definition identity (n : nat) := n.\n")
     run("stock-object-compile", [stock, "c", "-q", "StockObject.v"], env=stock_env)
     run("fork-reject-stock", ["rocq", "check", WORK / "StockObject.vo"], fail=True)
@@ -149,11 +152,12 @@ def main():
     if (generated["pw031_rows"], generated["pw031_property_checks"], generated["evaluator_witnesses"]) != (1299, 48954, 60):
         raise SystemExit("Oracle coverage drift")
     for name in ("PW020Differential", "PW031Campaign", "PW032Matrix", "PW046Evaluators",
-                 "PW032FreshLoad", "PW045Use", "PW020SignedShiftRegression"):
+                 "PW032FreshLoad", "PW045Use", "PW020SignedShiftRegression", "PWDecoderSharing"):
         rocq(name)
     run("checker-evaluators", ["rocq", "check", "-silent", "-R", ".", "Rocq.PrimitiveWords",
                                "-norec", "Rocq.PrimitiveWords.PW046Evaluators",
-                               "-norec", "Rocq.PrimitiveWords.PW032FreshLoad"])
+                               "-norec", "Rocq.PrimitiveWords.PW032FreshLoad",
+                               "-norec", "Rocq.PrimitiveWords.PWDecoderSharing"])
     for name in ("PrimitiveWordSpec", "PrimitiveWordAxioms", "PrimitiveWordBounds"):
         run("checker-" + name, ["rocq", "check", "-silent", "-norec", "Rocq.PrimitiveWords." + name])
 
@@ -196,7 +200,7 @@ def main():
     if re.search(r"zarith|caml_z", symbols, re.I):
         raise SystemExit("Bigint dependency in hot runtime")
     regression_count = existing_regressions()
-    summary = {"widths": list(WIDTHS), "object_format": 90347, "trust": trust,
+    summary = {"widths": list(WIDTHS), "object_format": 90348, "trust": trust,
                "wide_oracle_rows_per_engine": 144096, "public_oracle_rows_per_engine": 1299,
                "public_oracle_properties_per_engine": 48954, "evaluator_witnesses": 60,
                "native_evaluator": "disabled", "existing_regressions": regression_count, "checks": RESULTS}

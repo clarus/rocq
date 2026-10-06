@@ -237,7 +237,7 @@ let kind c =
   | Float f -> TFloat f
   | String s -> TString s
   | Array (_, t, u, v) -> TArray (t, u, v)
-  | Rel _ | Meta _ | Evar _ | Cast _ | Prod _ | Lambda _ | LetIn _ | App _
+  | Array64 _ | Rel _ | Meta _ | Evar _ | Cast _ | Prod _ | Lambda _ | LetIn _ | App _
   | Proj _ | Case _ | Fix _ | CoFix _ -> TOther
 
 let rec contains_primitive_word c =

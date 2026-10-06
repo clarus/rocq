@@ -437,6 +437,8 @@ let whd_val (v: values) =
     if Int.equal tag 0 then
       if Int.equal (Obj.size o) 1 then
         Varray (Obj.obj o)
+      else if Int.equal (Obj.size o) 3 then
+        Varray64 (Obj.obj (Obj.field o 0))
       else Vprod (Obj.obj o)
     else if Int.equal tag Obj.closure_tag && is_accumulate (fun_code o) then
       whd_accu o []
@@ -855,6 +857,7 @@ and pr_kind w =
   | Vfloat64 f -> str "Vfloat64(" ++ str (Float64.(to_string (of_float f))) ++ str ")"
   | Vstring s -> Pstring.to_string s |> Format.sprintf "Vstring(%S)" |> str
   | Varray _ -> str "Varray"
+  | Varray64 _ -> str "Varray64"
   | Vaccu (a, stk) -> str "Vaccu(" ++ pr_atom a ++ str ", " ++ pr_stack stk ++ str ")"
 and pr_stack stk =
   Pp.(match stk with
@@ -868,6 +871,41 @@ and pr_zipper z =
   | Zproj n -> str "Zproj(" ++ int n ++ str ")")
 
 (** Primitives implemented in OCaml *)
+
+(* The tag-zero, three-field wrapper is distinct from products (two fields)
+   and legacy persistent arrays (one field). Its tree is immutable. *)
+type array64_value = { array64_data : values Parray64.t; marker1 : unit; marker2 : unit }
+
+let val_of_array64 a : values =
+  Obj.magic { array64_data = a; marker1 = (); marker2 = () }
+
+let array64_empty = val_of_array64 Parray64.empty
+
+let array64_of_value (v : values) : values Parray64.t =
+  (Obj.magic v : array64_value).array64_data
+
+let array64_option f = function
+  | None -> val_of_int 0
+  | Some x -> val_of_block 1 [|f x|]
+
+let array64_prim = let open CPrimitives in function
+  | A64empty -> val_of_array64 Parray64.empty
+  | A64repeat -> Obj.magic (fun n x -> val_of_array64 (Parray64.make n x))
+  | A64length -> Obj.magic (fun a -> Parray64.length (array64_of_value a))
+  | A64get -> Obj.magic (fun a i ->
+      array64_option (fun x -> x) (Parray64.get (array64_of_value a) i))
+  | A64set -> Obj.magic (fun a i x ->
+      array64_option val_of_array64 (Parray64.set (array64_of_value a) i x))
+  | A64slice -> Obj.magic (fun a i n ->
+      array64_option val_of_array64 (Parray64.slice (array64_of_value a) i n))
+  | A64replace -> Obj.magic (fun a i b ->
+      array64_option val_of_array64
+        (Parray64.replace (array64_of_value a) i (array64_of_value b)))
+  | A64concat -> Obj.magic (fun a b ->
+      array64_option val_of_array64
+        (Parray64.concat (array64_of_value a) (array64_of_value b)))
+
+let array64_ofchunks = Obj.magic (fun chunks -> val_of_array64 (Parray64.of_chunks chunks))
 
 let parray_make = Obj.magic Parray.make
 let parray_get = Obj.magic Parray.get

@@ -155,7 +155,7 @@ let hdchar env sigma c =
     | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> "w"
     | Float _ -> "f"
     | String _ -> "s"
-    | Array _ -> "a"
+    | Array _ | Array64 _ -> "a"
   in
   hdrec 0 c
 

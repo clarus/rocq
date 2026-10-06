@@ -34,15 +34,21 @@ module CbnClos = struct
 
   (* [force] is deliberately cached for non-identity substitutions: several
      refolding/progress checks compare the same delayed closure repeatedly. *)
-  type t = { term : constr; subst : subs; mutable forced : constr option }
+  type t =
+    | Closure of { term : constr; subst : subs; mutable forced : constr option }
+    | Dense of { universe : EInstance.t; elements : t Parray64.t; element_type : t;
+                 mutable quoted : constr option }
   and subs = t Esubst.subs
 
   type view = subs * (EConstr.t, EConstr.t, ESorts.t, EInstance.t, ERelevance.t) Constr.kind_of_term
 
   let id_subst = Esubst.subs_id 0
-  let inject term = { term; subst = id_subst; forced = None }
-  let lift n c =
-    if Int.equal n 0 then c else { term = c.term; subst = Esubst.subs_shft (n, c.subst); forced = None }
+  let inject term = Closure { term; subst = id_subst; forced = None }
+  let rec lift n c =
+    if Int.equal n 0 then c else match c with
+    | Closure c -> Closure { term = c.term; subst = Esubst.subs_shft (n, c.subst); forced = None }
+    | Dense a -> Dense { a with elements = Parray64.map (lift n) a.elements;
+                        element_type = lift n a.element_type; quoted = None }
 
   (* important optim: expand rel eagerly
      (might also work to cache kind like we cache force?) *)
@@ -54,10 +60,16 @@ module CbnClos = struct
           | Inr (k, _) -> inject (mkRel k)
         end
       | _ ->
-      { term; subst; forced = None }
+      Closure { term; subst; forced = None }
 
   let mk_clos_vect subst v = Array.map (mk_clos subst) v
-  let is_id_subst c = Esubst.is_subs_id c.subst
+  let is_id_subst = function
+    | Closure c -> Esubst.is_subs_id c.subst
+    | Dense _ -> false
+
+  let is_array64 = function Dense _ -> true | Closure _ -> false
+  let mk_array64 universe elements element_type =
+    Dense { universe; elements; element_type; quoted = None }
 
   (* Closure-level application used by internal continuations that need to keep
      constructor/constant spines without forcing all arguments. *)
@@ -76,14 +88,25 @@ module CbnClos = struct
     let subst = List.fold_right Esubst.subs_cons (Array.to_list elems @ [def; ty]) id_subst in
     mk_clos subst term
 
-  let rec force c =
-    if Esubst.is_subs_id c.subst then c.term
-    else match c.forced with
-    | Some t -> t
-    | None ->
-      let t = force_constr c.subst c.term in
-      c.forced <- Some t;
-      t
+  let rec force = function
+    | Closure c ->
+      if Esubst.is_subs_id c.subst then c.term
+      else begin match c.forced with
+      | Some t -> t
+      | None ->
+        let t = force_constr c.subst c.term in
+        c.forced <- Some t;
+        t
+      end
+    | Dense a ->
+      begin match a.quoted with
+      | Some t -> t
+      | None ->
+        let elements = Parray64.map force a.elements in
+        let t = mkArray64(a.universe, Array64chunks.of_arrays (Parray64.to_chunks elements), force a.element_type) in
+        a.quoted <- Some t;
+        t
+      end
 
   and force_constr subs c =
     EConstr.Vars.esubst (fun k v -> force (lift k v)) subs c
@@ -121,7 +144,9 @@ module CbnClos = struct
     (n, (names, force_vect (mk_clos_vect subs types), force_vect (mk_clos_vect (Esubst.subs_liftn nb subs) bodies)))
 
   let equal sigma a b =
-    (a.term == b.term && a.subst == b.subst) ||
+    (a == b || match a,b with
+       | Closure a, Closure b -> a.term == b.term && a.subst == b.subst
+       | _ -> false) ||
     (* TODO: add fast path that returns false on non-Rel terms whose head is not of the same shape.
        Alternatively, fuse the equality check and the substitution
        (but attempt at 9a772ab008 produced bad results, cf https://gitlab.inria.fr/coq/coq/-/jobs/7383036) *)
@@ -130,7 +155,9 @@ module CbnClos = struct
     EConstr.eq_constr sigma a b
 
   let rec kind sigma c : view =
-    match EConstr.kind sigma c.term with
+    match c with
+    | Dense _ -> id_subst, EConstr.kind sigma (force c)
+    | Closure c -> match EConstr.kind sigma c.term with
     | Rel n ->
       begin match Esubst.expand_rel n c.subst with
       | Inl (k, v) -> kind sigma (lift k v)
@@ -139,6 +166,14 @@ module CbnClos = struct
         Esubst.subs_id 0, Rel k
       end
     | k -> c.subst, k
+
+  let array64_view sigma c = match c with
+    | Dense a -> Some a.elements
+    | Closure _ ->
+      match kind sigma c with
+      | subs, Array64(_,elems,_) ->
+        Some (Parray64.of_chunks (Array64chunks.to_arrays (Array64chunks.map (mk_clos subs) elems)))
+      | _ -> None
 
   type array_view = {
     array_length : int;
@@ -575,7 +610,7 @@ let clos_of_app_stack sigma x args =
   | Some args -> CbnClos.mk_app x args
   | None -> assert false
 
-let reduce_array_primitive sigma u p args =
+let reduce_array_primitive env sigma u p args =
   let get i = Array.get args i in
   let get_int i = match CbnClos.kind sigma (get i) with
     | subs, Int i -> Some i
@@ -590,6 +625,30 @@ let reduce_array_primitive sigma u p args =
   let elems_of_array a = Array.init a.CbnClos.array_length a.CbnClos.array_get in
   let mk_array elems def ty = CbnClos.mk_array u elems def ty in
   try match p with
+  | CPrimitives.Array64 op ->
+    let word i = match CbnClos.kind sigma (get i) with
+      | _, Word64 n -> n | _ -> raise Primred.NativeDestKO in
+    let arr i = match CbnClos.array64_view sigma (get i) with
+      | Some a -> a | None -> raise Primred.NativeDestKO in
+    let ty = get 0 in
+    let mkarr a = CbnClos.mk_array64 u a ty in
+    let arrty = CbnClos.mk_app
+        (CbnClos.inject (mkConstU (Primred.get_array64_type env,u))) [ty] in
+    let option ty = function
+      | None -> let _, none = Primred.get_option_constructors env in
+        CbnClos.mk_app (CbnClos.inject (EConstr.UnsafeMonomorphic.mkConstruct none)) [ty]
+      | Some v -> let some, _ = Primred.get_option_constructors env in
+        CbnClos.mk_app (CbnClos.inject (EConstr.UnsafeMonomorphic.mkConstruct some)) [ty;v] in
+    let arr_option a = option arrty (Option.map mkarr a) in
+    Some (match op with
+      | CPrimitives.A64empty -> mkarr Parray64.empty
+      | CPrimitives.A64repeat -> mkarr (Parray64.make (word 1) (get 2))
+      | CPrimitives.A64length -> CbnClos.inject (EConstr.of_constr (Constr.mkWord64 (Parray64.length (arr 1))))
+      | CPrimitives.A64get -> option ty (Parray64.get (arr 1) (word 2))
+      | CPrimitives.A64set -> arr_option (Parray64.set (arr 1) (word 2) (get 3))
+      | CPrimitives.A64slice -> arr_option (Parray64.slice (arr 1) (word 2) (word 3))
+      | CPrimitives.A64replace -> arr_option (Parray64.replace (arr 1) (word 2) (arr 3))
+      | CPrimitives.A64concat -> arr_option (Parray64.concat (arr 1) (arr 2)))
   | CPrimitives.Arraymake ->
     begin match get_int 1 with
     | Some len ->
@@ -634,7 +693,7 @@ let reduce_array_primitive sigma u p args =
     | None -> None
     end
   | _ -> None
-  with Invalid_argument _ -> None
+  with Invalid_argument _ | Primred.NativeDestKO -> None
 
 let apply_subst sigma cst_l t stack =
   let rec aux cst_l t stack =
@@ -993,7 +1052,7 @@ let rec whd_state_gen ?csts flags env sigma =
              As for iota reduction, discard them while keeping the residual
              stack (and the refolding information in its enclosing frames). *)
           Some
-            (match reduce_array_primitive sigma u p args with
+            (match reduce_array_primitive env sigma u p args with
              | Some t -> whrec Cst_stack.empty (t,s)
              | None ->
                let args = Array.map CbnClos.force args in
@@ -1007,7 +1066,9 @@ let rec whd_state_gen ?csts flags env sigma =
           Pp.(str "<><><><><>")) in
       ((x, stack),cst_l)
     in
-    let c0 = CbnClos.kind sigma x in
+    if CbnClos.is_array64 x then
+      match reduce_primitive_value () with Some result -> result | None -> fold ()
+    else let c0 = CbnClos.kind sigma x in
     match c0 with
     | _, Rel n when RedFlags.red_set flags RedFlags.fDELTA ->
       (match lookup_rel n env with
@@ -1097,10 +1158,20 @@ let rec whd_state_gen ?csts flags env sigma =
           end
        | exception NotEvaluableConst (IsPrimitive (u,p)) when Stack.check_native_args p stack ->
          let kargs = CPrimitives.kind p in
-         let (kargs,o) = Stack.get_next_primitive_args kargs stack in
-         (* Should not fail thanks to [check_native_args] *)
-         let (before,a,after) = Option.get o in
-         whrec Cst_stack.empty (a,Stack.Primitive(p,const,before,kargs,cst_l)::after)
+         if not (List.mem CPrimitives.Kwhnf kargs) then
+           let args, after = Stack.strip_app stack in
+           let values = Option.get (Stack.list_of_app_stack args) in
+           let values, extra = List.chop (CPrimitives.arity p) values in
+           let after = Stack.append_app (Array.of_list extra) after in
+           begin match reduce_array_primitive env sigma (snd const) p (Array.of_list values) with
+           | Some t -> whrec Cst_stack.empty (t,after)
+           | None -> fold ()
+           end
+         else
+           let (kargs,o) = Stack.get_next_primitive_args kargs stack in
+           (* Should not fail thanks to [check_native_args] *)
+           let (before,a,after) = Option.get o in
+           whrec Cst_stack.empty (a,Stack.Primitive(p,const,before,kargs,cst_l)::after)
        | exception NotEvaluableConst (HasRules (u', b, r)) ->
          begin try
            let red_fun ctx =
@@ -1256,7 +1327,7 @@ let rec whd_state_gen ?csts flags env sigma =
         |_ -> fold ()
       else fold ()
 
-    | _, (Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _) ->
+    | _, (Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _) ->
       begin match reduce_primitive_value () with
       | Some res -> res
       | None ->

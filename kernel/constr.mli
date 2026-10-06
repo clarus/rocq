@@ -82,6 +82,8 @@ val mkWord128 : Primitive_words_runtime.Word128.t -> constr
 val mkWord256 : Primitive_words_runtime.Word256.t -> constr
 
 (** Constructs an array *)
+val mkArray64 : UVars.Instance.t * constr Array64chunks.t * types -> constr
+
 val mkArray : UVars.Instance.t * constr array * constr * types -> constr
 
 (** Constructs a machine float number *)
@@ -303,8 +305,9 @@ type ('constr, 'types, 'sort, 'univs, 'r) kind_of_term =
   | Float     of Float64.t
   | String    of Pstring.t
   | Array     of 'univs * 'constr array * 'constr * 'types
-  (** [Array (u,vals,def,t)] is an array of [vals] in type [t] with default value [def].
-      [u] is a universe containing [t]. *)
+  | Array64   of 'univs * 'constr Array64chunks.t * 'types
+  (** [Array64 (u,chunks,t)] is a default-free dense sequence in type [t].
+      Chunk boundaries are unobservable; [u] is a universe containing [t]. *)
 
 (** User view of [constr]. For [App], it is ensured there is at
    least one argument and the function is not itself an applicative

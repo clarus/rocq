@@ -154,7 +154,7 @@ let get_inductive_deps ~noprop env kn =
         | None -> accu)
       | Rel _ | Var _ | Sort _ | Prod _ | Lambda _ | LetIn _ | Proj _
       | Construct _ | Case _ | CoFix _ | Fix _ | Meta _ | Evar _ | Int _
-      | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> Termops.fold_constr_with_full_binders env sigma EConstr.push_rel aux env (List.fold_left (aux env) accu a) c
+      | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> Termops.fold_constr_with_full_binders env sigma EConstr.push_rel aux env (List.fold_left (aux env) accu a) c
     in
     let fold i accu (constr_ctx,_) =
       let constr_ctx, _ = List.chop mip.mind_consnrealdecls.(i) constr_ctx in
@@ -429,7 +429,7 @@ let build_beq_scheme env handle kn =
        P->bool); to be done in parallel with preserving the types in
        Proj/Construct/CoFix *)
     | Ind _ -> None
-    | Array _ -> None
+    | Array _ | Array64 _ -> None
 
     (* We assume references to be references to small types and thus
        to types with singleton realizability predicate; to support
@@ -533,7 +533,7 @@ let build_beq_scheme env handle kn =
     | Const (kn,u as cst) ->
         if Environ.is_int63_type env kn then Some (int63_eqb ()) else
         if Environ.is_float64_type env kn then Some (float64_eqb ()) else
-        if Environ.is_array_type env kn then (* TODO *) raise (ParameterWithoutEquality (GlobRef.ConstRef kn)) else
+        if Environ.is_array_type env kn || Environ.is_array64_type env kn then (* TODO *) raise (ParameterWithoutEquality (GlobRef.ConstRef kn)) else
         (match Environ.constant_opt_value_in env (kn, u) with
         | Some c -> translate_term_eq env_lift c
         | None ->
@@ -603,7 +603,7 @@ let build_beq_scheme env handle kn =
     | Prod _ -> raise InductiveWithProduct (* loss of decidable if uncountable domain *)
 
     | Meta _ | Evar _ -> None (* assert false! *)
-    | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> None
+    | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> None
     in
     Option.map (fun c -> Term.it_mkLambda_or_LetIn c ctx) c
 

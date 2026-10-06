@@ -220,6 +220,8 @@ let rec nf_val env sigma v typ =
   | Vfloat64 f -> f |> Float64.of_float |> mkFloat
   | Vstring s -> s |> mkString
   | Varray t -> nf_array env sigma t typ
+  | Varray64 _ ->
+    CErrors.user_err Pp.(str "Native evaluation of Array64 is unsupported; use vm_compute")
   | Vblock b ->
       let capp,ctyp = construct_of_constr_block env sigma (block_tag b) typ in
       let args = nf_bargs env sigma b ctyp in

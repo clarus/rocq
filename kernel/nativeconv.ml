@@ -84,6 +84,10 @@ let rec conv_val env pb lvl v1 v2 cu =
     | Vstring s1, Vstring s2 ->
         if Pstring.equal s1 s2 then cu
         else raise NotConvertible
+    | Varray64 t1, Varray64 t2 ->
+      if not (Primitive_words_runtime.Word64.equal (Parray64.length t1) (Parray64.length t2))
+      then raise NotConvertible;
+      Parray64.fold_left2 (fun cu v1 v2 -> conv_val env CONV lvl v1 v2 cu) cu t1 t2
     | Varray t1, Varray t2 ->
       let len = Parray.length_int t1 in
       if not (Int.equal len (Parray.length_int t2)) then raise NotConvertible;
@@ -103,7 +107,7 @@ let rec conv_val env pb lvl v1 v2 cu =
         aux lvl (n1-1) b1 b2 0 cu
     | (Vfix e | Vcofix e), _ | _, (Vfix e | Vcofix e) -> Empty.abort e
     | (Vaccu _ | Vprod _ | Vconst _ | Vint64 _ | Vword8 _ | Vword16 _ | Vword32 _ | Vword64 _ | Vword128 _ | Vword256 _
-      | Vfloat64 _ | Vstring _ | Varray _ | Vblock _), _ -> raise NotConvertible
+      | Vfloat64 _ | Vstring _ | Varray _ | Varray64 _ | Vblock _), _ -> raise NotConvertible
 
 and conv_accu env pb lvl k1 k2 cu =
   let n1 = accu_nargs k1 in

@@ -410,7 +410,7 @@ let rec extract_type (table : Common.State.t) env sg db j c args =
               extract_type_app table env sg db (r, type_sign env sg ty) args
             | (Info, Default) -> Tunknown))
     | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> Tunknown
-    | Cast _ | LetIn _ | Construct _ | Int _ | Float _ | String _ | Array _ -> assert false
+    | Cast _ | LetIn _ | Construct _ | Int _ | Float _ | String _ | Array _ | Array64 _ -> assert false
 
 (*s Auxiliary function dealing with type application.
   Precondition: [r] is a type scheme represented by the signature [s],
@@ -776,6 +776,11 @@ let rec extract_term table env sg mle mlt c args =
     | Word256 i -> assert (args = []); MLword256 i
     | Float f -> assert (args = []); MLfloat f
     | String s -> assert (args = []); MLstring s
+    | Array64 (_u, chunks, _ty) ->
+      assert (args = []);
+      let a = new_meta () in
+      MLarray64 (List.map (Array.map (fun c -> extract_term table env sg mle a c []))
+        (Array64chunks.to_arrays chunks))
     | Array (_u,t,def,_ty) ->
       assert (args = []);
       let a = new_meta () in

@@ -27,7 +27,7 @@ Proof. vm_compute. reflexivity. Qed.
 ```
 
 Import `ScalarExtraction` when extracting these APIs to OCaml. The generated
-program links to the fork's `rocq-runtime.kernel` ; programs observing Z values also need Zarith.
+program links to the fork's `rocq-runtime.kernel`; programs observing Z values also need Zarith.
 The optional adapters in `compat` additionally require freshly rebuilt
 `Gecko.Word` libraries.
 
@@ -49,9 +49,8 @@ rocq c Example.v
 
 The helper checks that the selected kernel is this checkout's kernel. Tests
 and detailed logs are under `_build/native-integers/tests`; a successful
-complete check writes `summary.json` there. The stock executable used for
-object-format rejection defaults to the `rocq-9.3.0` switch; override it with
-`NATIVE_INTEGER_STOCK_ROCQ` if needed.
+complete check writes `summary.json` there. Set `NATIVE_INTEGER_STOCK_ROCQ` to an unmodified Rocq 9.3 executable for
+bidirectional compiled-object rejection checks.
 
 ## Semantics and trust
 
@@ -76,8 +75,8 @@ under the pinned compiler. Generated native OCaml extraction is supported
 independently. Ltac2 reflection of primitive words and Haskell/Scheme
 extraction of these primitives remain unsupported.
 
-Compiled objects use private format **90347**, rejecting stock format 90300
-and the earlier experimental format 90346. Rebuild all dependencies with this
+Compiled objects use private format **90348**, rejecting stock format 90300
+and the earlier fork formats 90346 and 90347. Rebuild all dependencies with this
 fork. Opam distribution and installation into a dedicated switch are deferred.
 
 Source origins and imported hashes are recorded in `source-manifest.json` and

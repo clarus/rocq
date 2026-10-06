@@ -72,6 +72,11 @@ let add_retroknowledge retro action =
         (match retro.retro_array with
          | None -> { retro with retro_array = Some c }
          | Some c' -> check_same_types typ c c'; retro)
+
+      | PT_array64 ->
+        (match retro.retro_array64 with
+         | None -> { retro with retro_array64 = Some c }
+         | Some c' -> check_same_types typ c c'; retro)
     end
 
   | Register_ind(pit,ind) ->
@@ -94,6 +99,12 @@ let add_retroknowledge retro action =
           | None -> (ind,1)
           | Some ((ind',_) as t) -> check_same_inds pit ind ind'; t in
         { retro with retro_pair = Some r }
+      | PIT_option ->
+        let r =
+          match retro.retro_option with
+          | None -> ((ind,1), (ind,2))
+          | Some (((ind',_),_) as t) -> check_same_inds pit ind ind'; t in
+        { retro with retro_option = Some r }
       | PIT_cmp ->
         let r =
           match retro.retro_cmp with
@@ -156,6 +167,16 @@ let get_pair_constructor env =
   | Some c  -> c
   | None -> anomaly Pp.(str"Reduction of primitive: pair not registered")
 
+let get_option_constructors env =
+  match (Environ.retroknowledge env).retro_option with
+  | Some r -> r
+  | None -> anomaly Pp.(str"Reduction of primitive: option not registered")
+
+let get_array64_type env =
+  match (Environ.retroknowledge env).retro_array64 with
+  | Some c -> c
+  | None -> anomaly Pp.(str"Reduction of primitive: array64 not registered")
+
 let get_cmp_constructors env =
   match (Environ.retroknowledge env).retro_cmp with
   | Some r -> r
@@ -191,6 +212,7 @@ module type RedNativeEntries =
     val get_float : evd -> elem -> Float64.t
     val get_string : evd -> elem -> Pstring.t
     val get_parray : evd -> elem -> elem Parray.t
+    val get_array64 : evd -> elem -> elem Parray64.t
     val mkInt : env -> Uint63.t -> elem
     val mkWord8 : env -> Primitive_words_runtime.Word8.t -> elem
     val mkWord16 : env -> Primitive_words_runtime.Word16.t -> elem
@@ -221,6 +243,10 @@ module type RedNativeEntries =
     val mkNInf : env -> elem
     val mkNaN : env -> elem
     val mkArray : env -> uinstance -> elem Parray.t -> elem -> elem
+    val mkArray64 : env -> uinstance -> elem Parray64.t -> elem -> elem
+    val mkArray64Type : env -> uinstance -> elem -> elem
+    val mkSome : env -> elem -> elem -> elem
+    val mkNone : env -> elem -> elem
   end
 
 module type RedNative =
@@ -318,6 +344,16 @@ struct
   let get_float2 evd args = get_float evd args 0, get_float evd args 1
 
   let get_parray evd args i = E.get_parray evd (E.get args i)
+
+  let get_array64 evd args i = E.get_array64 evd (E.get args i)
+
+  let mk_option env ty = function
+    | Some value -> E.mkSome env ty value
+    | None -> E.mkNone env ty
+
+  let mk_array64_option env u ty value =
+    let array_ty = E.mkArray64Type env u ty in
+    mk_option env array_ty (Option.map (fun a -> E.mkArray64 env u a ty) value)
 
   let get_string evd args i = E.get_string evd (E.get args i)
 
@@ -538,6 +574,40 @@ struct
     | Arraylength ->
       let t = get_parray evd args 1 in
       E.mkInt env (Parray.length t)
+    | Array64 op ->
+      let ty = E.get args 0 in
+      begin match op with
+      | A64empty -> E.mkArray64 env u Parray64.empty ty
+      | A64repeat ->
+        let len = get_word64 evd args 1 in
+        let value = E.get args 2 in
+        E.mkArray64 env u (Parray64.repeat len value) ty
+      | A64length ->
+        let a = get_array64 evd args 1 in
+        E.mkWord64 env (Parray64.length a)
+      | A64get ->
+        let a = get_array64 evd args 1 in
+        let i = get_word64 evd args 2 in
+        mk_option env ty (Parray64.get a i)
+      | A64set ->
+        let a = get_array64 evd args 1 in
+        let i = get_word64 evd args 2 in
+        mk_array64_option env u ty (Parray64.set a i (E.get args 3))
+      | A64slice ->
+        let a = get_array64 evd args 1 in
+        let start = get_word64 evd args 2 in
+        let len = get_word64 evd args 3 in
+        mk_array64_option env u ty (Parray64.slice a start len)
+      | A64replace ->
+        let dst = get_array64 evd args 1 in
+        let start = get_word64 evd args 2 in
+        let src = get_array64 evd args 3 in
+        mk_array64_option env u ty (Parray64.replace dst start src)
+      | A64concat ->
+        let left = get_array64 evd args 1 in
+        let right = get_array64 evd args 2 in
+        mk_array64_option env u ty (Parray64.concat left right)
+      end
     | Stringmake ->
       let i = get_int evd args 0 in
       let c = get_int evd args 1 in

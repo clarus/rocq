@@ -579,6 +579,11 @@ struct
     | String s -> s
     | _ -> raise Primred.NativeDestKO
 
+  let get_array64 evd e =
+    match EConstr.kind evd e with
+    | Array64(_,t,_) -> Parray64.of_chunks (Array64chunks.to_arrays t)
+    | _ -> raise Primred.NativeDestKO
+
   let get_parray evd e =
     match EConstr.kind evd e with
     | Array(_u,t,def,_ty) -> Parray.of_array t def
@@ -693,6 +698,20 @@ struct
     let (_pNormal,_nNormal,_pSubn,_nSubn,_pZero,_nZero,_pInf,_nInf,nan) =
       get_f_class_constructors env in
     mkConstruct nan
+
+  let mkArray64 env u t ty =
+    mkArray64(u, Array64chunks.of_arrays (Parray64.to_chunks t), ty)
+
+  let mkArray64Type env u ty =
+    mkApp (mkConstU (get_array64_type env,u), [|ty|])
+
+  let mkSome env ty v =
+    let some, _ = get_option_constructors env in
+    mkApp (mkConstruct some, [|ty;v|])
+
+  let mkNone env ty =
+    let _, none = get_option_constructors env in
+    mkApp (mkConstruct none, [|ty|])
 
   let mkArray env u t ty =
     let (t,def) = Parray.to_array t in
@@ -887,10 +906,22 @@ let rec whd_state_gen flags ?metas env sigma =
           end
        | exception NotEvaluableConst (IsPrimitive (u,p)) when Stack.check_native_args p stack ->
           let kargs = CPrimitives.kind p in
-          let (kargs,o) = Stack.get_next_primitive_args kargs stack in
-          (* Should not fail thanks to [check_native_args] *)
-          let (before,a,after) = Option.get o in
-          whrec (a,Stack.Primitive(p,const,before,kargs)::after)
+          if not (List.mem CPrimitives.Kwhnf kargs) then
+            (* Parameter-only primitives (notably Array64.empty) have no
+               argument to evaluate before calling the primitive reducer. *)
+            let args, after = Stack.strip_app stack in
+            let args = Option.get (Stack.list_of_app_stack args) in
+            let args, extra = List.chop (CPrimitives.arity p) args in
+            let after = Stack.append_app (Array.of_list extra) after in
+            begin match CredNative.red_prim env sigma p (snd const) (Array.of_list args) with
+            | Some t -> whrec (t, after)
+            | None -> fold ()
+            end
+          else
+            let (kargs,o) = Stack.get_next_primitive_args kargs stack in
+            (* Should not fail thanks to [check_native_args] *)
+            let (before,a,after) = Option.get o in
+            whrec (a,Stack.Primitive(p,const,before,kargs)::after)
        | exception NotEvaluableConst (HasRules (u', b, r)) ->
           begin try
             let red_fun ctx =
@@ -961,7 +992,7 @@ let rec whd_state_gen flags ?metas env sigma =
         |_ -> fold ()
       else fold ()
 
-    | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ ->
+    | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ ->
       begin match Stack.strip_app stack with
        | (_, Stack.Primitive(p,(_, u as kn),rargs,kargs)::s) ->
          let more_to_reduce = List.exists (fun k -> CPrimitives.Kwhnf = k) kargs in
@@ -1050,7 +1081,7 @@ let local_whd_state_gen flags ?metas env sigma =
       else s
 
     | Rel _ | Var _ | Sort _ | Prod _ | LetIn _ | Const _  | Ind _ | Proj _
-      | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> s
+      | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> s
 
   in
   whrec
@@ -1144,7 +1175,7 @@ let shrink_eta sigma c =
         | _ -> x
       else x
     | Meta _ | App _ | Case _ | Fix _ | Construct _ | CoFix _ | Evar _ | Rel _ | Var _ | Sort _ | Prod _
-    | LetIn _ | Const _  | Ind _ | Proj _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> x
+    | LetIn _ | Const _  | Ind _ | Proj _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> x
   in
   whrec c
 

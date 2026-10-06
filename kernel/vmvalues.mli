@@ -204,6 +204,10 @@ val check_switch : vswitch -> vswitch -> bool
 val branch_arg : int -> tag * int -> values
 
 (** Primitives implemented in OCaml, seen as values (to be used as globals) *)
+val array64_empty : structured_values
+val array64_prim : CPrimitives.array64_op -> values
+val array64_ofchunks : values
+
 val parray_make : values
 val parray_get : values
 val parray_get_default : values

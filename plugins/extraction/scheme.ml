@@ -149,6 +149,8 @@ let rec pp_expr table env args =
       paren (str "Prelude.error \"EXTRACTION OF FLOAT NOT IMPLEMENTED\"")
     | MLstring _ ->
       paren (str "Prelude.error \"EXTRACTION OF STRING NOT IMPLEMENTED\"")
+    | MLarray64 _ ->
+      CErrors.user_err Pp.(str "Array64 extraction is supported only for OCaml")
     | MLparray _ ->
             paren (str "Prelude.error \"EXTRACTION OF PARRAY NOT IMPLEMENTED\"")
 

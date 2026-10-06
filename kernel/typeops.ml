@@ -279,7 +279,7 @@ let type_of_prim_type _env u (type a) (prim : a CPrimitives.prim_type) = match p
   | CPrimitives.PT_string ->
     assert (UVars.Instance.is_empty u);
     Constr.mkSet
-  | CPrimitives.PT_array ->
+  | CPrimitives.PT_array | CPrimitives.PT_array64 ->
     begin match UVars.Instance.to_array u with
     | [||], [|u|] ->
       let ty = Constr.mkType (Univ.Universe.make u) in
@@ -337,6 +337,13 @@ let type_of_array env u =
   match (Environ.retroknowledge env).Retroknowledge.retro_array with
   | Some c -> mkConstU (c,u)
   | None -> CErrors.user_err Pp.(str"The type array must be registered before this construction can be typechecked.")
+
+let type_of_array64 env u =
+  if UVars.Instance.length u <> (0,1) then
+    CErrors.user_err Pp.(str "Invalid universe instance for array64 literal.");
+  match (Environ.retroknowledge env).Retroknowledge.retro_array64 with
+  | Some c -> mkConstU (c,u)
+  | None -> CErrors.user_err Pp.(str"The type array64 must be registered before this construction can be typechecked.")
 
 (* Type of product *)
 
@@ -842,6 +849,26 @@ and execute_aux tbl env cstr =
       in
       mkApp(ta, [|ty|])
 
+    | Array64 (u, chunks, ty) ->
+      let ulev = match UVars.Instance.to_array u with
+        | [||], [|u|] -> u
+        | _ -> CErrors.user_err Pp.(str "Invalid universe instance for array64 literal.")
+      in
+      (* Count actual elements, never serialized runtime metadata. *)
+      let _ =
+        try Array64chunks.length chunks
+        with Invalid_argument _ ->
+          CErrors.user_err Pp.(str "Array64 literal length exceeds the unsigned 64-bit limit.")
+      in
+      let tyty = execute tbl env ty in
+      let ty = self ty in
+      check_cast env ty tyty DEFAULTcast (mkType (Universe.make ulev));
+      let () = Array64chunks.iter (fun x ->
+        let xt = execute tbl env x in
+        check_cast env (self x) xt DEFAULTcast ty) chunks
+      in
+      mkApp (type_of_array64 env u, [|ty|])
+
     (* Partial proofs: unsupported by the kernel *)
     | Meta _ ->
         anomaly (Pp.str "the kernel does not support metavariables.")
@@ -955,6 +982,7 @@ let type_of_prim env u t =
   let float_ty () = type_of_float env in
   let string_ty () = type_of_string env in
   let array_ty u a = mkApp(type_of_array env u, [|a|]) in
+  let array64_ty u a = mkApp(type_of_array64 env u, [|a|]) in
   let bool_ty () =
     match (Environ.retroknowledge env).Retroknowledge.retro_bool with
     | Some ((ind,_),_) -> UM.mkInd ind
@@ -985,6 +1013,11 @@ let type_of_prim env u t =
     | Some ((ind,_),_) -> Constr.mkApp(UM.mkInd ind, [|int_ty|])
     | None -> CErrors.user_err Pp.(str"The type carry must be registered before this primitive.")
   in
+  let option_ty elem_ty =
+    match (Environ.retroknowledge env).Retroknowledge.retro_option with
+    | Some ((ind,_),_) -> Constr.mkApp (UM.mkInd ind, [|elem_ty|])
+    | None -> CErrors.user_err Pp.(str"The type option must be registered before this primitive.")
+  in
   let open CPrimitives in
   let tr_prim_type (tr_type : ind_or_type -> constr) (type a) (ty : a prim_type) (t : a) = match ty with
     | PT_int63 -> int_ty t
@@ -997,11 +1030,13 @@ let type_of_prim env u t =
     | PT_float64 -> float_ty t
     | PT_string -> string_ty t
     | PT_array -> array_ty (fst t) (tr_type (snd t))
+    | PT_array64 -> array64_ty (fst t) (tr_type (snd t))
   in
   let tr_ind (tr_type : ind_or_type -> constr) (type t) (i : t prim_ind) (a : t) = match i, a with
     | PIT_bool, () -> bool_ty ()
     | PIT_carry, t -> carry_ty (tr_type t)
     | PIT_pair, (t1, t2) -> pair_ty (tr_type t1) (tr_type t2)
+    | PIT_option, t -> option_ty (tr_type t)
     | PIT_cmp, () -> compare_ty ()
     | PIT_f_cmp, () -> f_compare_ty ()
     | PIT_f_class, () -> f_class_ty ()

@@ -164,7 +164,7 @@ let apply_whd k whd =
   let v = val_of_rel k in
   match whd with
   | Vprod _ | Vconst _ | Vblock _ | Vint64 _ | Vword8 _ | Vword16 _ | Vword32 _ | Vword64 _ | Vword128 _ | Vword256 _
-  | Vfloat64 _ | Vstring _ | Varray _ ->
+  | Vfloat64 _ | Vstring _ | Varray _ | Varray64 _ ->
      assert false
   | Vfun f -> reduce_fun k f
   | Vfix(f, None) ->

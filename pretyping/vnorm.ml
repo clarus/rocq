@@ -30,11 +30,11 @@ module NamedDecl = Context.Named.Declaration
 
 let e_whd_all env sigma t = match EConstr.kind sigma t with
 | Sort _ | Meta _ | Ind _ | Construct _ | Prod _| Lambda _ | Fix _
-| CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ as kind ->
+| CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ as kind ->
   EConstr.of_kind kind (* ensure head evar normalization *)
 | App (c, _) as kind ->
   begin match EConstr.kind sigma c with
-  | Ind _ | Construct _ | Meta _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> EConstr.of_kind kind
+  | Ind _ | Construct _ | Meta _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> EConstr.of_kind kind
   | Sort _ | Rel _ | Var _ | Evar _ | Cast _ | Prod _ | Lambda _ | LetIn _ | App _
   | Const _ | Case _ | Fix _ | CoFix _ | Proj _ ->
     Reductionops.clos_whd_flags RedFlags.all env sigma t
@@ -228,6 +228,7 @@ and nf_whd env sigma whd typ =
   | Vfloat64 f -> f |> Float64.of_float |> mkFloat
   | Vstring s -> s |> mkString
   | Varray t -> nf_array env sigma t typ
+  | Varray64 t -> nf_array64 env sigma t typ
   | Vaccu (Aid idkey, stk) ->
       constr_type_of_idkey env sigma idkey stk
   | Vaccu (Aind ((mi, i) as ind), stk) ->
@@ -469,6 +470,13 @@ and nf_cofix env sigma cf =
   let env = push_rec_types (names,cft,cft) env in
   let cfb = Util.Array.map2 (fun v t -> nf_val env sigma v t) vb cft in
   mkCoFix (init,(names,cft,cfb))
+
+and nf_array64 env sigma t typ =
+  let ty, allargs = app_type !!env sigma (EConstr.of_constr typ) in
+  let typ_elem = allargs.(0) in
+  let chunks = Parray64.to_chunks (Parray64.map (fun v -> nf_val env sigma v typ_elem) t) in
+  let u = snd (destConst ty) in
+  mkArray64 (u, Array64chunks.of_arrays chunks, typ_elem)
 
 and nf_array env sigma t typ =
   let ty, allargs = app_type !!env sigma (EConstr.of_constr typ) in

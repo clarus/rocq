@@ -376,6 +376,7 @@ let iter_constr_LR sigma f c = match EConstr.kind sigma c with
   | Fix (_, (_, t, b)) | CoFix (_, (_, t, b)) ->
     for i = 0 to Array.length t - 1 do f t.(i); f b.(i) done
   | Proj(_,_,a) -> f a
+  | Array64 (_u, chunks, ty) -> Array64chunks.iter f chunks; f ty
   | Array(_u,t,def,ty) -> Array.iter f t; f def; f ty
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _ | Construct _
      | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> ()
@@ -433,7 +434,7 @@ let proj_nparams env c =
 
 let isRigid sigma c = match EConstr.kind sigma c with
   | (Prod _ | Sort _ | Lambda _ | Case _ | Fix _ | CoFix _| Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _
-    | Float _ | String _ | Array _) -> true
+    | Float _ | String _ | Array _ | Array64 _) -> true
   | (Rel _ | Var _ | Meta _ | Evar (_, _) | Cast (_, _, _) | LetIn (_, _, _, _)
     | App (_, _) | Const (_, _) | Ind ((_, _), _) | Construct (((_, _), _), _)
     | Proj _) -> false

@@ -355,6 +355,14 @@ let rec pp_expr table par env args =
     | MLstring s ->
         assert (args=[]);
         str "(" ++ str (Pstring.compile s) ++ str ")"
+    | MLarray64 [] ->
+      assert (args=[]);
+      str "Parray64.empty"
+    | MLarray64 chunks ->
+      assert (args=[]);
+      let chunk t = str "[|" ++
+        prlist_with_sep pr_semicolon (pp_expr table true env []) (Array.to_list t) ++ str "|]" in
+      str "(Parray64.of_chunks [" ++ prlist_with_sep pr_semicolon chunk chunks ++ str "])"
     | MLparray(t,def) ->
       assert (args=[]);
       let tuple = prlist_with_sep pr_semicolon (pp_expr table true env []) (Array.to_list t) in

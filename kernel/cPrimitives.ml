@@ -23,6 +23,10 @@ type word_op =
   | Wlsl | Wlsr | Wasr
   | Wdivu | Wmodu | Wdivs | Wrems
 
+type array64_op =
+  | A64empty | A64repeat | A64length | A64get
+  | A64set | A64slice | A64replace | A64concat
+
 type t =
   | Int63head0
   | Int63tail0
@@ -86,6 +90,7 @@ type t =
   | Stringsub
   | Stringcat
   | Stringcompare
+  | Array64 of array64_op
 
 let word_width_of_string = function
   | "word8" -> Word8
@@ -170,6 +175,14 @@ let parse name = match name with
   | "array_set" -> Arrayset
   | "array_length" -> Arraylength
   | "array_copy" -> Arraycopy
+  | "array64_empty" -> Array64 A64empty
+  | "array64_repeat" -> Array64 A64repeat
+  | "array64_length" -> Array64 A64length
+  | "array64_get" -> Array64 A64get
+  | "array64_set" -> Array64 A64set
+  | "array64_slice" -> Array64 A64slice
+  | "array64_replace" -> Array64 A64replace
+  | "array64_concat" -> Array64 A64concat
   | "string_make" -> Stringmake
   | "string_length" -> Stringlength
   | "string_get" -> Stringget
@@ -181,6 +194,7 @@ let parse name = match name with
 let equal (p1 : t) (p2 : t) =
   p1 == p2 || match p1, p2 with
   | Word (w1, op1), Word (w2, op2) -> w1 = w2 && op1 = op2
+  | Array64 op1, Array64 op2 -> op1 = op2
   | _ -> false
 
 let hash = function
@@ -254,6 +268,10 @@ let hash = function
      | Weq -> 8 | Wltu -> 9 | Wleu -> 10 | Wlts -> 11 | Wles -> 12
      | Wlsl -> 13 | Wlsr -> 14 | Wasr -> 15
      | Wdivu -> 16 | Wmodu -> 17 | Wdivs -> 18 | Wrems -> 19)
+  | Array64 op ->
+    182 + (match op with
+      | A64empty -> 0 | A64repeat -> 1 | A64length -> 2 | A64get -> 3
+      | A64set -> 4 | A64slice -> 5 | A64replace -> 6 | A64concat -> 7)
 
 (* Should match names in nativevalues.ml *)
 let word_width_to_string = function
@@ -268,6 +286,11 @@ let word_op_to_string = function
   | Wlts -> "lts" | Wles -> "les"
   | Wlsl -> "lsl" | Wlsr -> "lsr" | Wasr -> "asr"
   | Wdivu -> "divu" | Wmodu -> "modu" | Wdivs -> "divs" | Wrems -> "rems"
+
+let array64_op_to_string = function
+  | A64empty -> "empty" | A64repeat -> "repeat"
+  | A64length -> "length" | A64get -> "get" | A64set -> "set"
+  | A64slice -> "slice" | A64replace -> "replace" | A64concat -> "concat"
 
 let to_string = function
   | Int63head0 -> "head0"
@@ -332,6 +355,7 @@ let to_string = function
   | Stringsub -> "string_sub"
   | Stringcat -> "string_cat"
   | Stringcompare -> "string_compare"
+  | Array64 op -> "array64_" ^ array64_op_to_string op
 
 type const =
   | Arraymaxlength
@@ -361,11 +385,13 @@ type 'a prim_type =
   | PT_float64 : unit prim_type
   | PT_string : unit prim_type
   | PT_array : (Instance.t * ind_or_type) prim_type
+  | PT_array64 : (Instance.t * ind_or_type) prim_type
 
 and 'a prim_ind =
   | PIT_bool : unit prim_ind
   | PIT_carry : ind_or_type prim_ind
   | PIT_pair : (ind_or_type * ind_or_type) prim_ind
+  | PIT_option : ind_or_type prim_ind
   | PIT_cmp : unit prim_ind
   | PIT_f_cmp : unit prim_ind
   | PIT_f_class : unit prim_ind
@@ -388,7 +414,7 @@ let typ_univs (type a) (t : a prim_type) = match t with
   | PT_word256 -> AbstractContext.empty
   | PT_float64 -> AbstractContext.empty
   | PT_string -> AbstractContext.empty
-  | PT_array -> one_univ
+  | PT_array | PT_array64 -> one_univ
 
 type prim_type_ex = PTE : 'a prim_type -> prim_type_ex
 
@@ -410,6 +436,11 @@ let types =
        (Instance.of_array ([||],[|Level.var 0|]),
         PITT_param 1))
   in
+  let array64_ty =
+    PITT_type (PT_array64,
+      (Instance.of_array ([||], [|Level.var 0|]), PITT_param 1))
+  in
+  let option_ty ty = PITT_ind (PIT_option, ty) in
   function
   | Int63head0 | Int63tail0 ->
       [int_ty], int_ty
@@ -476,6 +507,17 @@ let types =
       [array_ty], array_ty
   | Arraylength ->
       [array_ty], int_ty
+  | Array64 op ->
+      begin match op with
+      | A64empty -> [], array64_ty
+      | A64repeat -> [word64_ty; PITT_param 1], array64_ty
+      | A64length -> [array64_ty], word64_ty
+      | A64get -> [array64_ty; word64_ty], option_ty (PITT_param 1)
+      | A64set -> [array64_ty; word64_ty; PITT_param 1], option_ty array64_ty
+      | A64slice -> [array64_ty; word64_ty; word64_ty], option_ty array64_ty
+      | A64replace -> [array64_ty; word64_ty; array64_ty], option_ty array64_ty
+      | A64concat -> [array64_ty; array64_ty], option_ty array64_ty
+      end
   | Stringmake ->
       [int_ty; int_ty], string_ty
   | Stringlength ->
@@ -558,7 +600,8 @@ let params = function
   | Arraydefault
   | Arrayset
   | Arraycopy
-  | Arraylength -> one_param
+  | Arraylength
+  | Array64 _ -> one_param
 
 let nparams x = List.length (params x)
 
@@ -625,7 +668,8 @@ let univs = function
   | Arraydefault
   | Arrayset
   | Arraycopy
-  | Arraylength -> one_univ
+  | Arraylength
+  | Array64 _ -> one_univ
 
 type arg_kind =
   | Kparam (* not needed for the evaluation of the primitive when it reduces *)
@@ -660,6 +704,7 @@ let prim_ind_to_string (type a) (p : a prim_ind) = match p with
   | PIT_bool -> "bool"
   | PIT_carry -> "carry"
   | PIT_pair -> "pair"
+  | PIT_option -> "option"
   | PIT_cmp -> "cmp"
   | PIT_f_cmp -> "f_cmp"
   | PIT_f_class -> "f_class"
@@ -675,6 +720,7 @@ let prim_type_to_string (type a) (ty : a prim_type) = match ty with
   | PT_float64 -> "float64_type"
   | PT_string -> "string_type"
   | PT_array -> "array_type"
+  | PT_array64 -> "array64_type"
 
 let op_or_type_to_string = function
   | OT_op op -> to_string op
@@ -692,6 +738,7 @@ let prim_type_of_string = function
   | "float64_type" -> PTE PT_float64
   | "string_type" -> PTE PT_string
   | "array_type" -> PTE PT_array
+  | "array64_type" -> PTE PT_array64
   | _ -> raise Not_found
 
 let op_or_type_of_string s =

@@ -201,6 +201,10 @@ let rec json_expr table env = function
       ("what", json_str "expr:string");
       ("string", json_str (Pstring.to_string s))
     ]
+  | MLarray64 chunks -> json_dict [
+      ("what", json_str "expr:array64");
+      ("chunks", json_list (List.map (fun t -> json_listarr (Array.map (json_expr table env) t)) chunks))
+    ]
   | MLparray(t,def) -> json_dict [
       ("what", json_str "expr:array");
       ("elems", json_listarr (Array.map (json_expr table env) t));

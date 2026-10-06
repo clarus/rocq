@@ -197,6 +197,7 @@ let fold_with_full_binders g f n acc c =
       let n' = CArray.fold_left2_i (fun i c n t -> g (LocalAssum (n,lift i t)) c) n lna tl in
       let fd = Array.map2 (fun t b -> (t,b)) tl bl in
       Array.fold_left (fun acc (t,b) -> f n' (f n acc t) b) acc fd
+  | Array64(_,t,ty) -> f n (Array64chunks.fold_left (f n) acc t) ty
   | Array(_u,t,def,ty) -> f n (f n (Array.fold_left (f n) acc t) def) ty
 
 let get_constant_body access kn =

@@ -26,3 +26,4 @@ type ('value, 'vaccu, 'vfun, 'vprod, 'vfix, 'vcofix, 'vblock) kind =
   | Vfloat64 of float
   | Vstring of Pstring.t
   | Varray of 'value Parray.t
+  | Varray64 of 'value Parray64.t

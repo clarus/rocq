@@ -163,7 +163,7 @@ let constr_key env kind c =
       | Word256 _ -> KWord256
       | Float _ -> KFloat
       | String _ -> KString
-      | Array _ -> KArray
+      | Array _ | Array64 _ -> KArray
     in Some (aux c)
   with Not_found -> None
 

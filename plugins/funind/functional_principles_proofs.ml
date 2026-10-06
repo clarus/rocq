@@ -673,7 +673,7 @@ let build_proof (interactive_proof : bool) (fnames : Constant.t list) ptes_infos
           | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> user_err Pp.(str "word64 cannot be applied")
           | Float _ -> user_err Pp.(str "float cannot be applied")
           | String _ -> user_err Pp.(str "string cannot be applied")
-          | Array _ -> user_err Pp.(str "array cannot be applied")
+          | Array _ | Array64 _ -> user_err Pp.(str "array cannot be applied")
           | App _ ->
             assert false (* we have collected all the app in decompose_app *)
           | Proj _ -> assert false (*FIXME*)
@@ -723,7 +723,7 @@ let build_proof (interactive_proof : bool) (fnames : Constant.t list) ptes_infos
             ; h_reduce_with_zeta Locusops.onConcl
             ; build_proof do_finalize new_infos ]
         | Rel _ -> anomaly (Pp.str "Free var in goal conclusion!")
-        | Array _ -> CErrors.user_err Pp.(str "Arrays not handled yet"))
+        | Array _ | Array64 _ -> CErrors.user_err Pp.(str "Arrays not handled yet"))
   and build_proof do_finalize dyn_infos =
     (*     observe (str "proving with "++Printer.pr_lconstr dyn_infos.info++ str " on goal " ++ pr_gls g); *)
     Indfun_common.observe_tac ~header:(str "observation")

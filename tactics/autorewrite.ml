@@ -216,6 +216,7 @@ struct
     | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> None
     | Float f -> Some (DFloat f, [])
     | String s -> Some (DString s, [])
+    | Array64 _ -> None
     | Array (_u,t,def,ty) ->
       Some (DArray, Array.to_list t @ [def ; ty])
     in

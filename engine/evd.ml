@@ -1629,7 +1629,7 @@ let rec kind sigma h c = match Constr.kind c with
   end
 | Meta _ | Sort _ | Cast _  | Prod _ | Lambda _ | LetIn _ | App _
 | Const _ | Ind _ | Construct _ | Case _ | Fix _ | CoFix _ | Proj _
-| Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ as c0 ->
+| Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ as c0 ->
   (h, c0)
 
 let expand0 sigma h c =

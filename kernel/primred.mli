@@ -18,6 +18,8 @@ val get_cmp_type : env -> Constant.t
 val get_bool_constructors : env -> constructor * constructor
 val get_carry_constructors : env -> constructor * constructor
 val get_pair_constructor : env -> constructor
+val get_option_constructors : env -> constructor * constructor
+val get_array64_type : env -> Constant.t
 val get_cmp_constructors : env -> constructor * constructor * constructor
 val get_f_cmp_constructors : env -> constructor * constructor * constructor * constructor
 val get_f_class_constructors :
@@ -45,6 +47,7 @@ module type RedNativeEntries =
     val get_float : evd -> elem -> Float64.t
     val get_string : evd -> elem -> Pstring.t
     val get_parray : evd -> elem -> elem Parray.t
+    val get_array64 : evd -> elem -> elem Parray64.t
     val mkInt : env -> Uint63.t -> elem
     val mkWord8 : env -> Primitive_words_runtime.Word8.t -> elem
     val mkWord16 : env -> Primitive_words_runtime.Word16.t -> elem
@@ -75,6 +78,11 @@ module type RedNativeEntries =
     val mkNInf : env -> elem
     val mkNaN : env -> elem
     val mkArray : env -> uinstance -> elem Parray.t -> elem -> elem
+    val mkArray64 : env -> uinstance -> elem Parray64.t -> elem -> elem
+    val mkArray64Type : env -> uinstance -> elem -> elem
+    (** The first [elem] argument is the option's parameter type. *)
+    val mkSome : env -> elem -> elem -> elem
+    val mkNone : env -> elem -> elem
   end
 
 module type RedNative =

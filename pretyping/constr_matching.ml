@@ -464,6 +464,11 @@ let matches_core env sigma allow_bound_rels (binding_vars, pat) c =
     if Pstring.equal s1 s2 then subst
     else raise PatternMatchingFailure
 
+  | PArray64 (pt, pty), Array64 (_u, t, ty) ->
+    if not (Primitive_words_runtime.Word64.equal (Array64chunks.length pt) (Array64chunks.length t))
+    then raise PatternMatchingFailure;
+    sorec ctx env (Array64chunks.fold_left2 (sorec ctx env) subst pt t) pty ty
+
   | PArray (pt, pdef, pty), Array (_u, t, def, ty) ->
     let () = if not (Int.equal (Array.length pt) (Array.length t)) then raise PatternMatchingFailure in
     sorec ctx env (sorec ctx env (Array.fold_left2 (sorec ctx env) subst pt t) pdef def) pty ty
@@ -471,7 +476,7 @@ let matches_core env sigma allow_bound_rels (binding_vars, pat) c =
   | (PRef _ | PVar _ | PRel _ | PApp _ | PProj _ | PLambda _
       | PProd _ | PLetIn _ | PSort _ | PIf _ | PCase _
       | PFix _ | PCoFix _| PEvar _ | PInt _ | PWord8 _ | PWord16 _ | PWord32 _ | PWord64 _ | PWord128 _ | PWord256 _ | PFloat _
-      | PString _ | PArray _), _ -> raise PatternMatchingFailure
+      | PString _ | PArray _ | PArray64 _), _ -> raise PatternMatchingFailure
 
   | PExtra e, _ -> Util.Empty.abort e
 
@@ -617,6 +622,16 @@ let sub_match ?(closed=true) env sigma pat c =
     | term -> aux env term mk_ctx next
     | exception Retyping.RetypeError _ -> next ()
     end
+  | Array64 (u, chunks, ty) ->
+    let next_mk_ctx = function
+    | ty :: elems ->
+      let rem, chunks = Array64chunks.fold_map (fun elems _ ->
+        match elems with x :: xs -> xs, x | [] -> assert false) elems chunks in
+      assert (List.is_empty rem);
+      mk_ctx (mkArray64 (u, chunks, ty))
+    | [] -> assert false in
+    let elems = Array64chunks.fold_right (fun c tail -> (env, c) :: tail) chunks [] in
+    try_aux ((env, ty) :: elems) next_mk_ctx next
   | Array(u, t, def, ty) ->
     let next_mk_ctx = function
     | def :: ty :: l -> mk_ctx (mkArray(u, Array.of_list l, def, ty))

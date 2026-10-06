@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the fork, a fresh Stdlib, and the native integer API without installing opam packages."""
+"""Build the fork, fresh Stdlib, and native integer/array libraries without installing opam packages."""
 
 from __future__ import annotations
 
@@ -35,6 +35,8 @@ def environment():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("build", "check"), nargs="?", default="check")
+    parser.add_argument("-j", "--jobs", type=int, choices=range(1, 5), default=1,
+                        help="Concurrent build jobs (default: 1)")
     parser.add_argument("--gecko-word", type=Path,
                         help="Optionally build compatibility adapters against this Gecko.Word source directory")
     args = parser.parse_args()
@@ -53,14 +55,15 @@ def main():
         (WORK / "tests/summary.json").unlink(missing_ok=True)
     (WORK / "compiler.txt").write_text(compiler + "\n")
 
-    run(["dune", "build", "--profile=release", "-j1", "tools/configure/configure.exe"], env=env)
+    jobs = f"-j{args.jobs}"
+    run(["dune", "build", "--profile=release", jobs, "tools/configure/configure.exe"], env=env)
     run([ROOT / "_build/default/tools/configure/configure.exe", "-quiet", "-relocatable",
          "-native-compiler", "no"], env=env)
-    run(["make", "dunestrap", "DUNEOPT=--profile=release -j1"], env=env)
-    run(["dune", "build", "--profile=release", "-j1", "rocq-runtime.install", "coq-core.install",
+    run(["make", "dunestrap", f"DUNEOPT=--profile=release {jobs}"], env=env)
+    run(["dune", "build", "--profile=release", jobs, "rocq-runtime.install", "coq-core.install",
          "rocq-core.install", "coqide-server.install"], env=env)
     core = ROOT / "_build/install/default"
-    if "let vo_version = 90347l" not in (ROOT / "_build/default/config/coq_config.ml").read_text():
+    if "let vo_version = 90348l" not in (ROOT / "_build/default/config/coq_config.ml").read_text():
         raise SystemExit("Unexpected compiled-object identity")
     env["PATH"] = str(core / "bin") + os.pathsep + env["PATH"]
     env["OCAMLPATH"] = str(core / "lib")
@@ -83,14 +86,18 @@ def main():
         raise SystemExit("Stdlib source revision mismatch")
     stdlib_stage = stdlib / "_build/install/default"
     env["ROCQPATH"] = str(stdlib_stage / "lib/coq/user-contrib")
-    run(["dune", "build", "--root", stdlib, "--profile=release", "-j1", "@install"], cwd=stdlib, env=env)
+    run(["dune", "build", "--root", stdlib, "--profile=release", jobs, "@install"], cwd=stdlib, env=env)
     api = ROOT / "native-integers"
-    run(["dune", "build", "--root", api, "--profile=release", "-j1", "@install"], cwd=api, env=env)
+    run(["dune", "build", "--root", api, "--profile=release", jobs, "@install"], cwd=api, env=env)
     api_stage = api / "_build/install/default"
     env["ROCQPATH"] += os.pathsep + str(api_stage / "lib/coq/user-contrib")
+    arrays = ROOT / "native-arrays"
+    run(["dune", "build", "--root", arrays, "--profile=release", jobs, "@install"], cwd=arrays, env=env)
+    arrays_stage = arrays / "_build/install/default"
+    env["ROCQPATH"] += os.pathsep + str(arrays_stage / "lib/coq/user-contrib")
     # This environment is also convenient for external consumers of the local build.
     import shlex
-    assignments = {name: env[name] for name in ("PATH", "OCAMLPATH", "ROCQLIB", "ROCQPATH", "OPAMROOT", "OPAMSWITCH") if name in env}
+    assignments = {name: env[name] for name in ("PATH", "OCAMLPATH", "ROCQLIB", "ROCQPATH", "OPAMROOT", "OPAMSWITCH", "OCAMLRUNPARAM") if name in env}
     (WORK / "env.sh").write_text("\n".join(f"export {name}={shlex.quote(value)}" for name, value in assignments.items()) + "\n")
     if args.gecko_word:
         import shutil
@@ -110,7 +117,7 @@ def main():
             cwd=adapter.parent, env=env)
     if args.action == "check":
         run(["python3", api / "check.py"], cwd=api, env=env, timeout=14400)
-    print("Native integer " + args.action + " completed.", flush=True)
+    print("Native integer and array " + args.action + " completed.", flush=True)
 
 
 if __name__ == "__main__":

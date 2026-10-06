@@ -105,6 +105,7 @@ and fterm =
   | FWord256 of Primitive_words_runtime.Word256.t
   | FFloat of Float64.t
   | FString of Pstring.t
+  | FArray64 of UVars.Instance.t * fconstr Parray64.t * fconstr
   | FArray of UVars.Instance.t * fconstr Parray.t * fconstr
   | FLIFT of int * fconstr
   | FCLOS of constr * usubs
@@ -256,7 +257,7 @@ let rec lft_fconstr n ft =
     | FConstruct (c,args) -> {mark=Cstr; term=FConstruct(c,Array.Fun1.map lft_fconstr n args)}
     | FLOCKED -> assert false
     | FFlex (RelKey _) | FAtom _ | FApp _ | FProj _ | FCaseT _ | FCaseInvert _ | FProd _
-    | FLetIn _ | FEvar _ | FCLOS _ | FArray _ -> {mark=ft.mark; term=FLIFT(n,ft)}
+    | FLetIn _ | FEvar _ | FCLOS _ | FArray _ | FArray64 _ -> {mark=ft.mark; term=FLIFT(n,ft)}
 let lift_fconstr k f =
   if Int.equal k 0 then f else lft_fconstr k f
 
@@ -359,7 +360,7 @@ let mk_clos (e:usubs) t =
     | Word256 i -> {mark = Cstr; term = FWord256 i}
     | Float f -> {mark = Cstr; term = FFloat f}
     | String s -> {mark = Cstr; term = FString s}
-    | (CoFix _|Lambda _|Fix _|Prod _|Evar _|App _|Case _|Cast _|LetIn _|Proj _|Array _) ->
+    | (CoFix _|Lambda _|Fix _|Prod _|Evar _|App _|Case _|Cast _|LetIn _|Proj _|Array _|Array64 _) ->
         {mark = Red; term = FCLOS(t,e)}
   (* Invariant, pattern variables under apps are deferred to knht by being wrapped in FCLOS *)
 
@@ -518,6 +519,10 @@ let rec subst_constr (subst,usubst as e) c =
   let u' = usubst_instance e u in
   let c = if u == u' then c else mkCase (ci, u', pms, p, iv, discr, br) in
   Constr.map_with_binders usubs_lift subst_constr e c
+| Array64 (u,elems,ty) ->
+  let u' = usubst_instance e u in
+  let c = if u == u' then c else mkArray64 (u',elems,ty) in
+  Constr.map_with_binders usubs_lift subst_constr e c
 | Array (u,elems,def,ty) ->
   let u' = usubst_instance e u in
   let c = if u == u' then c else mkArray (u',elems,def,ty) in
@@ -627,6 +632,9 @@ let rec to_constr lfts v =
     | FString s ->
         Constr.mkString s
 
+    | FArray64 (u,t,ty) ->
+      let t = Parray64.map (to_constr lfts) t in
+      mkArray64(u, Array64chunks.of_arrays (Parray64.to_chunks t), to_constr lfts ty)
     | FArray (u,t,ty) ->
       let def = to_constr lfts (Parray.default t) in
       let t = Array.init (Parray.length_int t) (fun i ->
@@ -747,6 +755,9 @@ let rec resubst subs v =
   | FLIFT (k, a) ->
     resubst (subs_popn k subs) a
 
+  | FArray64 (u, t, ty) ->
+    let t = Parray64.map (resubst subs) t in
+    { v with term = FArray64 (u, t, resubst subs ty) }
   | FArray (u, t, ty) ->
     let t = Parray.map (resubst subs) t in
     let ty = resubst subs ty in
@@ -1183,6 +1194,11 @@ module FNativeEntries =
       | FString s -> s
       | _ -> assert false
 
+    let get_array64 () e =
+      match [@ocaml.warning "-4"] e.term with
+      | FArray64 (_, t, _) -> t
+      | _ -> raise Primred.NativeDestKO
+
     let get_parray () e =
       match [@ocaml.warning "-4"] e.term with
       | FArray (_u,t,_ty) -> t
@@ -1512,6 +1528,22 @@ module FNativeEntries =
       check_f_class env;
       !fNaN
 
+    let mkArray64 env u t ty =
+      let _ = Primred.get_array64_type env in
+      { mark = Cstr; term = FArray64 (u,t,ty) }
+
+    let mkArray64Type env u ty =
+      let c = Primred.get_array64_type env in
+      mkFApp {mark = Ntrl; term = FFlex (ConstKey (c,u))} [|ty|]
+
+    let mkSome env ty v =
+      let some, _ = Primred.get_option_constructors env in
+      mkFApp (mk_construct some) [|ty;v|]
+
+    let mkNone env ty =
+      let _, none = Primred.get_option_constructors env in
+      mkFApp (mk_construct none) [|ty|]
+
     let mkArray env u t ty =
       check_array env;
       { mark = Cstr; term = FArray (u,t,ty)}
@@ -1575,7 +1607,7 @@ let rec knh info m stk =
 (* cases where knh stops *)
     | (FFlex _|FLetIn _|FEvar _|FCaseInvert _|FIrrelevant|
        FCoFix _|FLambda _|FRel _|FAtom _|FInd _|FProd _|FInt _|FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _|FFloat _|
-       FString _|FArray _) ->
+       FString _|FArray _|FArray64 _) ->
         (m, stk)
 
 (* The same for pure terms *)
@@ -1646,6 +1678,10 @@ and knht info e t stk =
           let repack = info.i_cache.i_sigma.evar_repack in
           { mark = Ntrl; term = FEvar (evk, args, e, repack) }, stk
       end
+    | Array64(u,t,ty) ->
+      let u = usubst_instance e u in
+      let t = Parray64.of_chunks (Array64chunks.to_arrays (Array64chunks.map (mk_clos e) t)) in
+      knh info {mark = Cstr; term = FArray64(u,t,mk_clos e ty)} stk
     | Array(u,t,def,ty) ->
       let u = usubst_instance e u in
       let len = Array.length t in
@@ -2100,8 +2136,18 @@ let rec knr info tab ~pat_state m stk =
         | Primitive op ->
           if check_native_args op stk then
             let c = match fl with ConstKey c -> c | RelKey _ | VarKey _ -> assert false in
-            let rargs, a, nargs, stk = get_native_args1 op c stk in
-            kni info tab ~pat_state a (Zprimitive(op,c,rargs,nargs)::stk)
+            let (rargs, nargs), stk = get_native_args op c stk in
+            begin match nargs with
+            | [] ->
+              let args = Array.of_list (List.rev rargs) in
+              begin match FredNative.red_prim info.i_cache.i_env () op (snd c) args with
+              | Some v -> kni info tab ~pat_state v stk
+              | None -> knr_ret info tab ~pat_state (mkFApp m args, stk)
+              end
+            | (kd,a) :: nargs ->
+              assert (kd = CPrimitives.Kwhnf);
+              kni info tab ~pat_state a (Zprimitive(op,c,rargs,nargs)::stk)
+            end
           else
             (* Similarly to fix, partially applied primitives are not Ntrl! *)
             knr_ret info tab ~pat_state (m, stk)
@@ -2144,7 +2190,7 @@ let rec knr info tab ~pat_state m stk =
     else knr_ret info tab ~pat_state (m, stk)
   | FLetIn (_,v,_,bd,e) when red_set info.i_flags fZETA ->
       knit info tab ~pat_state (usubs_cons v e) bd stk
-  | FInt _ | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _ | FFloat _ | FString _ | FArray _ ->
+  | FInt _ | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _ | FFloat _ | FString _ | FArray _ | FArray64 _ ->
     (match [@ocaml.warning "-4"] strip_update_shift_app m stk with
      | (_, _, _, Zprimitive(op,(_,u as c),rargs,nargs)::s) ->
        let (rargs, nargs) = skip_native_args (m::rargs) nargs in
@@ -2251,7 +2297,7 @@ let is_val v = match v.term with
 | FAtom _ | FRel _   | FInd _ | FConstruct (_,[||]) | FInt _ | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _ | FFloat _ | FString _ -> true
 | FFlex _ -> v.mark == Ntrl
 | FConstruct _ | FApp _ | FProj _ | FFix _ | FCoFix _ | FCaseT _ | FCaseInvert _ | FLambda _
-| FProd _ | FLetIn _ | FEvar _ | FArray _ | FLIFT _ | FCLOS _ -> false
+| FProd _ | FLetIn _ | FEvar _ | FArray _ | FArray64 _ | FLIFT _ | FCLOS _ -> false
 | FIrrelevant | FLOCKED -> assert false
 
 let rec kl info tab m =
@@ -2275,7 +2321,7 @@ and klt info tab e t = match kind t with
   | Rel _ -> false (* For AppRel, in case of a higher-order substitution, knit correctly deals with it *)
   | Ind _ | Construct _ -> true
   | CoFix _ | Lambda _ | Fix _ | Prod _ | Evar _ | Case _
-  | Cast _ | LetIn _ | Proj _ | Array _ | Meta _ | Sort _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _
+  | Cast _ | LetIn _ | Proj _ | Array _ | Array64 _ | Meta _ | Sort _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _
   | Float _ | String _ -> false
   | Const (cst, _) ->
     let ts = RedFlags.red_transparent info.i_flags in
@@ -2308,7 +2354,7 @@ and klt info tab e t = match kind t with
   if na' == na && u' == u && v' == v then t
   else mkProd (na', u', v')
 | Cast (t, _, _) -> klt info tab e t
-| Var _ | Const _ | CoFix _ | Fix _ | Evar _ | Case _ | LetIn _ | Proj _ | Array _ ->
+| Var _ | Const _ | CoFix _ | Fix _ | Evar _ | Case _ | LetIn _ | Proj _ | Array _ | Array64 _ ->
   let share = info.i_cache.i_share in
   let (nm,s) = knit info tab e t [] in
   let () = if share then ignore (fapp_stack (nm, s)) in (* to unlock Zupdates! *)
@@ -2355,6 +2401,9 @@ and norm_head info tab m =
           repack (ev, List.map (fun a -> klt info tab env a) args)
       | FProj (p,r,c) ->
         mkProj (p, r, kl info tab c)
+      | FArray64 (u, a, ty) ->
+        let a = Parray64.map (kl info tab) a in
+        mkArray64(u, Array64chunks.of_arrays (Parray64.to_chunks a), kl info tab ty)
       | FArray (u, a, ty) ->
         let a, def = Parray.to_array a in
         let a = Array.map (kl info tab) a in
@@ -2443,8 +2492,15 @@ let unfold_ref_with_args infos tab fl v =
   | Def (def, _) -> Some (def, v)
   | Primitive op when check_native_args op v ->
     let c = match [@ocaml.warning "-4"] fl with ConstKey c -> c | _ -> assert false in
-    let rargs, a, nargs, v = get_native_args1 op c v in
-    Some (a, (Zupdate a::(Zprimitive(op,c,rargs,nargs)::v)))
+    let (rargs,nargs), v = get_native_args op c v in
+    begin match nargs with
+    | [] ->
+      Option.map (fun t -> t,v)
+        (FredNative.red_prim infos.i_cache.i_env () op (snd c) (Array.of_list (List.rev rargs)))
+    | (kd,a) :: nargs ->
+      assert (kd = CPrimitives.Kwhnf);
+      Some (a, (Zupdate a::(Zprimitive(op,c,rargs,nargs)::v)))
+    end
   | Symbol (u, b, r) ->
     RedPattern.match_symbol knred (infos_with_reds infos all) tab ~pat_state:(RedPattern.Nil Yes) fl (u, b, r) v
   | Undef _ | OpaqueDef _ | Primitive _ -> None

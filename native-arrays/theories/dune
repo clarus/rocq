@@ -1,0 +1,4 @@
+(rocq.theory
+ (name Rocq.NativeArrays)
+ (package rocq-native-arrays)
+ (theories Corelib Stdlib Rocq.PrimitiveWords))

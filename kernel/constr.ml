@@ -118,6 +118,7 @@ type ('constr, 'types, 'sort, 'univs, 'r) kind_of_term =
   | Float     of Float64.t
   | String    of Pstring.t
   | Array     of 'univs * 'constr array * 'constr * 'types
+  | Array64   of 'univs * 'constr Array64chunks.t * 'types
 
 (* constr is the fixpoint of the previous type. *)
 type t = T of (t, t, Sorts.t, Instance.t, Sorts.relevance) kind_of_term [@@unboxed]
@@ -473,6 +474,8 @@ let mkWord128 i = of_kind @@ Word128 i
 let mkWord256 i = of_kind @@ Word256 i
 
 (* Constructs an array *)
+let mkArray64 (u,t,ty) = of_kind @@ Array64 (u,t,ty)
+
 let mkArray (u,t,def,ty) = of_kind @@ Array (u,t,def,ty)
 
 (* Constructs a primitive float number *)
@@ -516,6 +519,7 @@ let fold f acc c = match kind c with
     Array.fold_left2 (fun acc t b -> f (f acc t) b) acc tl bl
   | CoFix (_,(_lna,tl,bl)) ->
     Array.fold_left2 (fun acc t b -> f (f acc t) b) acc tl bl
+  | Array64(_,t,ty) -> f (Array64chunks.fold_left f acc t) ty
   | Array(_u,t,def,ty) ->
     f (f (Array.fold_left f acc t) def) ty
 
@@ -542,6 +546,7 @@ let iter f c = match kind c with
     Array.iter f pms; f (snd @@ fst p); iter_invert f iv; f c; Array.iter (fun (_, b) -> f b) bl
   | Fix (_,(_,tl,bl)) -> Array.iter f tl; Array.iter f bl
   | CoFix (_,(_,tl,bl)) -> Array.iter f tl; Array.iter f bl
+  | Array64(_,t,ty) -> Array64chunks.iter f t; f ty
   | Array(_u,t,def,ty) -> Array.iter f t; f def; f ty
 
 (* [iter_with_binders g f n c] iters [f n] on the immediate
@@ -572,6 +577,7 @@ let iter_with_binders g f n c = match kind c with
   | CoFix (_,(_,tl,bl)) ->
       Array.Fun1.iter f n tl;
       Array.Fun1.iter f (iterate g (Array.length tl) n) bl
+  | Array64(_,t,ty) -> Array64chunks.iter (f n) t; f n ty
   | Array(_u,t,def,ty) ->
     Array.iter (f n) t; f n def; f n ty
 
@@ -606,6 +612,7 @@ let fold_constr_with_binders g f n acc c =
       let n' = iterate g (Array.length tl) n in
       let fd = Array.map2 (fun t b -> (t,b)) tl bl in
       Array.fold_left (fun acc (t,b) -> f n' (f n acc t) b) acc fd
+  | Array64(_,t,ty) -> f n (Array64chunks.fold_left (f n) acc t) ty
   | Array(_u,t,def,ty) ->
     f n (f n (Array.fold_left (f n) acc t) def) ty
 
@@ -702,6 +709,10 @@ let map f c = match kind c with
       let bl' = Array.Smart.map f bl in
       if tl'==tl && bl'==bl then c
       else mkCoFix (ln,(lna,tl',bl'))
+  | Array64(u,t,ty) ->
+    let t' = Array64chunks.smartmap f t in
+    let ty' = f ty in
+    if t == t' && ty == ty' then c else mkArray64(u,t',ty')
   | Array(u,t,def,ty) ->
     let t' = Array.Smart.map f t in
     let def' = f def in
@@ -787,6 +798,10 @@ let fold_map f accu c = match kind c with
       let accu, bl' = Array.Smart.fold_left_map f accu bl in
       if tl'==tl && bl'==bl then accu, c
       else accu, mkCoFix (ln,(lna,tl',bl'))
+  | Array64(u,t,ty) ->
+    let accu, t' = Array64chunks.fold_map f accu t in
+    let accu, ty' = f accu ty in
+    if t == t' && ty == ty' then accu, c else accu, mkArray64(u,t',ty')
   | Array(u,t,def,ty) ->
     let accu, t' = Array.Smart.fold_left_map f accu t in
     let accu, def' = f accu def in
@@ -856,6 +871,10 @@ let map_with_binders g f l c0 = match kind c0 with
     let l' = iterate g (Array.length tl) l in
     let bl' = Array.Fun1.Smart.map f l' bl in
     mkCoFix (ln,(lna,tl',bl'))
+  | Array64(u,t,ty) ->
+    let t' = Array64chunks.smartmap (f l) t in
+    let ty' = (f l) ty in
+    if t == t' && ty == ty' then c0 else mkArray64(u,t',ty')
   | Array(u,t,def,ty) ->
     let t' = Array.Fun1.Smart.map f l t in
     let def' = f l def in
@@ -956,13 +975,15 @@ let compare_head_gen_leq_with kind1 kind2 leq_universes leq_sorts eq_evars eq le
     && Array.equal_norefl (eq 0) tl1 tl2 && Array.equal_norefl (eq 0) bl1 bl2
   | CoFix(ln1,(_,tl1,bl1)), CoFix(ln2,(_,tl2,bl2)) ->
     Int.equal ln1 ln2 && Array.equal_norefl (eq 0) tl1 tl2 && Array.equal_norefl (eq 0) bl1 bl2
+  | Array64(u1,t1,ty1), Array64(u2,t2,ty2) ->
+    leq_universes None u1 u2 && Array64chunks.equal_norefl (eq 0) t1 t2 && eq 0 ty1 ty2
   | Array(u1,t1,def1,ty1), Array(u2,t2,def2,ty2) ->
     leq_universes None u1 u2 &&
     Array.equal_norefl (eq 0) t1 t2 &&
     eq 0 def1 def2 && eq 0 ty1 ty2
   | (Rel _ | Meta _ | Var _ | Sort _ | Prod _ | Lambda _ | LetIn _ | App _
     | Proj _ | Evar _ | Const _ | Ind _ | Construct _ | Case _ | Fix _
-    | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _), _ -> false
+    | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _), _ -> false
 
 (* [compare_head_gen_leq u s eq leq c1 c2] compare [c1] and [c2] using [eq] to compare
    the immediate subterms of [c1] of [c2] for conversion if needed, [leq] for cumulativity,
@@ -1133,11 +1154,13 @@ let hasheq_kind t1 t2 =
     | Word256 i1, Word256 i2 -> Primitive_words_runtime.Word256.equal i1 i2
     | Float f1, Float f2 -> Float64.equal f1 f2
     | String s1, String s2 -> Pstring.equal s1 s2
+    | Array64(u1,t1,ty1), Array64(u2,t2,ty2) ->
+      u1 == u2 && ty1 == ty2 && Array64chunks.equal (==) t1 t2
     | Array(u1,t1,def1,ty1), Array(u2,t2,def2,ty2) ->
       u1 == u2 && def1 == def2 && ty1 == ty2 && array_eqeq t1 t2
     | (Rel _ | Meta _ | Var _ | Sort _ | Cast _ | Prod _ | Lambda _ | LetIn _
       | App _ | Proj _ | Evar _ | Const _ | Ind _ | Construct _ | Case _
-      | Fix _ | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _), _ -> false
+      | Fix _ | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _), _ -> false
 
 let hasheq t1 t2 = hasheq_kind (kind t1) (kind t2)
 
@@ -1341,6 +1364,11 @@ let rec hash_term (t : t) : int * (constr,constr,_,_,_) kind_of_term =
     (combinesmall 24 (Primitive_words_runtime.Word256.hash i), t)
   | Float f as t -> (combinesmall 25 (Float64.hash f), t)
   | String s as t -> (combinesmall 26 (Pstring.hash s), t)
+  | Array64 (u,ar,ty) ->
+    let hu, u = Instance.hcons u in
+    let ht, ar = Array64chunks.fold_map (fun h x -> let hx, x = sh_rec x in combine hx h, x) 0 ar in
+    let hty, ty = sh_rec ty in
+    (combinesmall 28 (combine3 hu ht hty), Array64(u,ar,ty))
   | Array (u,ar,def,ty) ->
     let _,car,_,_ = destArray (self t) in
     let hu, u = Instance.hcons u in
@@ -1513,6 +1541,9 @@ let rec debug_print c =
            limb3 limb2 limb1 limb0)
   | Float i -> str"Float("++str (Float64.to_string i) ++ str")"
   | String s -> str"String("++str (Printf.sprintf "%S" (Pstring.to_string s)) ++ str")"
+  | Array64(u,t,ty) -> str"Array64(" ++
+      prlist_with_sep pr_comma (fun a -> prlist_with_sep pr_comma debug_print (Array.to_list a)) (Array64chunks.to_arrays t) ++
+      str " : " ++ debug_print ty ++ str")@{" ++ UVars.Instance.pr Sorts.raw_printer u ++ str"}"
   | Array(u,t,def,ty) -> str"Array(" ++ prlist_with_sep pr_comma debug_print (Array.to_list t) ++ str" | "
       ++ debug_print def ++ str " : " ++ debug_print ty
       ++ str")@{" ++ UVars.Instance.pr Sorts.raw_printer u ++ str"}"

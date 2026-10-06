@@ -282,6 +282,9 @@ let retype ?metas ?(polyprop=true) sigma =
     | Word256 _ -> EConstr.of_constr (Typeops.type_of_word256 env)
     | Float _ -> EConstr.of_constr (Typeops.type_of_float env)
     | String _ -> EConstr.of_constr (Typeops.type_of_string env)
+    | Array64(u, _, ty) ->
+      let arr = EConstr.of_constr (Typeops.type_of_array64 env (EInstance.kind sigma u)) in
+      mkApp(arr,[|ty|])
     | Array(u, _, _, ty) ->
       let arr = EConstr.of_constr @@ Typeops.type_of_array env (EInstance.kind sigma u) in
       mkApp(arr, [|ty|])
@@ -464,7 +467,7 @@ let relevance_of_term env sigma c =
       | Evar (evk, _) ->
           let evi = Evd.find_undefined sigma evk in
           Evd.evar_relevance evi
-      | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> ERelevance.relevant
+      | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> ERelevance.relevant
       | Meta _ -> ERelevance.relevant
     in
     aux Range.empty c

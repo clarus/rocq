@@ -156,6 +156,12 @@ let map_universes_opt_subst_with_binders next aux frel fqual funiv k c =
     let br' = Array.Smart.map aux_ctx br in
     if rel' == rel && u' == u && pms' == pms && p' == p && iv' == iv && t' == t && br' == br then c
     else mkCase (ci, u', pms', (p',rel'), iv', t', br')
+  | Array64(u,elems,ty) ->
+    let u' = Instance.subst_fn flevel u in
+    let elems' = Array64chunks.smartmap (aux k) elems in
+    let ty' = aux k ty in
+    if u == u' && elems == elems' && ty == ty' then c
+    else mkArray64(u',elems',ty')
   | Array (u,elems,def,ty) ->
     let u' = Instance.subst_fn flevel u in
     let elems' = CArray.Fun1.Smart.map aux k elems in

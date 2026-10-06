@@ -1585,6 +1585,9 @@ let rec glob_of_pat
   | PWord256 i -> GWord256 i
   | PFloat f -> GFloat f
   | PString s -> GString s
+  | PArray64 (t, ty) ->
+    let glob_of = glob_of_pat of_extra avoid env sigma in
+    Glob_ops.array64_literal None (Array64chunks.map glob_of t) (glob_of ty)
   | PArray(t,def,ty) ->
     let glob_of = glob_of_pat of_extra avoid env sigma in
     GArray (None, Array.map glob_of t, glob_of def, glob_of ty)

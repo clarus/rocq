@@ -1900,6 +1900,53 @@ let check_register_ind (type t) ind (r : t CPrimitives.prim_ind) (mb, ob as spec
         check_if (Constr.equal codom (mkApp (ind,[|mkRel 4; mkRel 3|]))) s
       | _ -> check_if false s
     end
+  | CPrimitives.PIT_option ->
+    check_nparams 1;
+    check_nconstr 2;
+    (* Primitive signatures quantify over an arbitrary element universe. A
+       fixed-universe option has the same constructor shapes but cannot be
+       substituted into those signatures: unannotated primitive declarations
+       trust the generated type. Require the standard unconstrained template
+       schema, including its computational result sort. *)
+    let template_error = Pp.str
+      "An unconstrained template option of type Type@{u} -> Type@{max(Set,u)} is expected" in
+    check_if (mb.mind_finite <> CoFinite) template_error;
+    check_if (Int.equal ob.mind_nrealargs 0 && Int.equal ob.mind_nrealdecls 0)
+      template_error;
+    let template = match mb.mind_template with
+      | Some template -> template
+      | None -> CErrors.user_err template_error
+    in
+    check_if (UVars.AbstractContext.size template.template_context = (0, 1))
+      template_error;
+    check_if (PConstraints.is_empty
+      (UVars.AbstractContext.constraints template.template_context)) template_error;
+    let parameter_sort = Sorts.sort_of_univ (Univ.Universe.make (Univ.Level.var 0)) in
+    let result_sort = Sorts.sort_of_univ
+      (Univ.Universe.sup Univ.Universe.type0 (Univ.Universe.make (Univ.Level.var 0))) in
+    check_if (match template.template_param_arguments with
+      | [Some sort] -> Sorts.equal sort parameter_sort
+      | _ -> false) template_error;
+    check_if (Sorts.equal template.template_concl result_sort) template_error;
+    check_name 0 "Some";
+    check_name 1 "None";
+    let constructor_type pos =
+      Vars.subst_instance_constr template.template_defaults ob.mind_user_lc.(pos)
+    in
+    let invalid = Pp.str "the constructor does not have the expected type" in
+    begin match Term.decompose_prod (constructor_type 0) with
+    | ([_,value; _,parameter], codomain) ->
+      check_if (is_Type parameter) invalid;
+      check_if (Constr.equal value (mkRel 1)) invalid;
+      check_if (Constr.equal codomain (mkApp (ind, [|mkRel 2|]))) invalid
+    | _ -> check_if false invalid
+    end;
+    begin match Term.decompose_prod (constructor_type 1) with
+    | ([_,parameter], codomain) ->
+      check_if (is_Type parameter) invalid;
+      check_if (Constr.equal codomain (mkApp (ind, [|mkRel 1|]))) invalid
+    | _ -> check_if false invalid
+    end
   | CPrimitives.PIT_cmp ->
     check_nparams 0;
     check_nconstr 3;

@@ -74,6 +74,8 @@ let rec constr_pattern_eq env (p1:constr_pattern) p2 = match p1, p2 with
    Float64.equal f1 f2
 | PString s1, PString s2 ->
    Pstring.equal s1 s2
+| PArray64 (t1, ty1), PArray64 (t2, ty2) ->
+  Array64chunks.equal (constr_pattern_eq env) t1 t2 && constr_pattern_eq env ty1 ty2
 | PArray (t1, def1, ty1), PArray (t2, def2, ty2) ->
   Array.equal (fun c1 c2 -> constr_pattern_eq env c1 c2) t1 t2 && constr_pattern_eq env def1 def2
   && constr_pattern_eq env ty1 ty2
@@ -81,7 +83,7 @@ let rec constr_pattern_eq env (p1:constr_pattern) p2 = match p1, p2 with
 | (PRef _ | PVar _ | PEvar _ | PRel _ | PApp _ | PSoApp _
    | PLambda _ | PProd _ | PLetIn _ | PSort _ | PMeta _
    | PIf _ | PCase _ | PFix _ | PCoFix _ | PProj _ | PInt _ | PWord8 _ | PWord16 _ | PWord32 _ | PWord64 _ | PWord128 _ | PWord256 _
-   | PFloat _ | PString _ | PArray _), _ -> false
+   | PFloat _ | PString _ | PArray _ | PArray64 _), _ -> false
 (** FIXME: fixpoint and cofixpoint should be relativized to pattern *)
 
 and pattern_eq env (i1, j1, p1) (i2, j2, p2) =
@@ -117,6 +119,7 @@ let rec occurn_pattern : 'a. _ -> 'a constr_pattern_r -> _
      Array.exists (occurn_pattern n) tl || Array.exists (occurn_pattern (n+Array.length tl)) bl
   | PCoFix (_,(_,tl,bl)) ->
      Array.exists (occurn_pattern n) tl || Array.exists (occurn_pattern (n+Array.length tl)) bl
+  | PArray64 (t, ty) -> Array64chunks.exists (occurn_pattern n) t || occurn_pattern n ty
   | PArray (t,def,ty) ->
     Array.exists (occurn_pattern n) t || occurn_pattern n def || occurn_pattern n ty
   | PExtra _ -> false (* XXX dubious behaviour *)
@@ -138,7 +141,7 @@ let rec head_pattern_bound (t:constr_pattern) =
         -> raise BoundPattern
     (* Perhaps they were arguments, but we don't beta-reduce *)
     | PLambda _ -> raise BoundPattern
-    | PCoFix _ | PInt _ | PWord8 _ | PWord16 _ | PWord32 _ | PWord64 _ | PWord128 _ | PWord256 _ | PFloat _ | PString _ | PArray _ ->
+    | PCoFix _ | PInt _ | PWord8 _ | PWord16 _ | PWord32 _ | PWord64 _ | PWord128 _ | PWord256 _ | PFloat _ | PString _ | PArray _ | PArray64 _ ->
       anomaly ~label:"head_pattern_bound" (Pp.str "not a type.")
     | PExtra e -> Util.Empty.abort e
 
@@ -238,6 +241,8 @@ let pattern_of_constr ~broken env sigma t =
     | Word256 i -> PWord256 i
     | Float f -> PFloat f
     | String s -> PString s
+    | Array64 (_u, t, ty) ->
+      PArray64 (Array64chunks.map (pattern_of_constr env) t, pattern_of_constr env ty)
     | Array (_u, t, def, ty) ->
       PArray (Array.map (pattern_of_constr env) t, pattern_of_constr env def, pattern_of_constr env ty)
     in
@@ -267,6 +272,7 @@ let map_pattern_with_binders_gen (type a b) g f fgen l : a constr_pattern_r -> b
   | PCoFix (ln,(lna,tl,bl)) ->
      let l' = Array.fold_left (fun l na -> g na l) l lna in
      PCoFix (ln,(lna,Array.map (f l) tl,Array.map (f l') bl))
+  | PArray64 (t, ty) -> PArray64 (Array64chunks.map (f l) t, f l ty)
   | PArray (t,def,ty) -> PArray (Array.map (f l) t, f l def, f l ty)
   | PEvar (ev,ps) -> PEvar (ev, List.map (f l) ps)
   | PExtra x -> fgen l x
@@ -370,6 +376,10 @@ let rec subst_pattern_gen
       let bl' = Array.Smart.map (subst_pattern_gen gsubst env sigma subst) bl in
       if bl' == bl && tl' == tl then pat
       else PCoFix (ln,(lna,tl',bl'))
+  | PArray64 (t, ty) ->
+      let t' = Array64chunks.smartmap (subst_pattern_gen gsubst env sigma subst) t in
+      let ty' = subst_pattern_gen gsubst env sigma subst ty in
+      if t == t' && ty == ty' then pat else PArray64 (t', ty')
   | PArray (t,def,ty) ->
       let t' = Array.Smart.map (subst_pattern_gen gsubst env sigma subst) t in
       let def' = subst_pattern_gen gsubst env sigma subst def in

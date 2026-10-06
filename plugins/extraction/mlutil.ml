@@ -408,12 +408,13 @@ let rec eq_ml_ast t1 t2 = match t1, t2 with
 | MLword256 i1, MLword256 i2 -> Primitive_words_runtime.Word256.equal i1 i2
 | MLfloat f1, MLfloat f2 -> Float64.equal f1 f2
 | MLstring s1, MLstring s2 -> Pstring.equal s1 s2
+| MLarray64 c1, MLarray64 c2 -> List.equal (Array.equal eq_ml_ast) c1 c2
 | MLparray (t1,def1), MLparray (t2, def2) -> Array.equal eq_ml_ast t1 t2 && eq_ml_ast def1 def2
 | (MLrel _|MLapp _|MLlam _|MLletin _|MLglob _|MLcons _
   |MLtuple _|MLcase _|MLfix _|MLexn _|MLdummy _|MLaxiom _
   | MLmagic _| MLuint _| MLword8 _| MLword16 _| MLword32 _| MLword64 _
   | MLword128 _ | MLword256 _
-  | MLfloat _| MLstring _| MLparray _), _
+  | MLfloat _| MLstring _| MLparray _| MLarray64 _), _
   -> false
 
 and eq_ml_pattern p1 p2 = match p1, p2 with
@@ -446,6 +447,7 @@ let ast_iter_rel f =
     | MLapp (a,l) -> iter n a; List.iter (iter n) l
     | MLcons (_,_,l) | MLtuple l ->  List.iter (iter n) l
     | MLmagic a -> iter n a
+    | MLarray64 chunks -> List.iter (Array.iter (iter n)) chunks
     | MLparray (t,def) -> Array.iter (iter n) t; iter n def
     | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
     | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
@@ -469,6 +471,7 @@ let ast_map f = function
   | MLcons (typ,c,l) -> MLcons (typ,c, List.map f l)
   | MLtuple l -> MLtuple (List.map f l)
   | MLmagic a -> MLmagic (f a)
+  | MLarray64 chunks -> MLarray64 (List.map (Array.map f) chunks)
   | MLparray (t,def) -> MLparray (Array.map f t, f def)
   | MLrel _ | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
   | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
@@ -491,6 +494,7 @@ let ast_map_lift f n = function
   | MLcons (typ,c,l) -> MLcons (typ,c, List.map (f n) l)
   | MLtuple l -> MLtuple (List.map (f n) l)
   | MLmagic a -> MLmagic (f n a)
+  | MLarray64 chunks -> MLarray64 (List.map (Array.map (f n)) chunks)
   | MLparray (t,def) -> MLparray (Array.map (f n) t, f n def)
   | MLrel _ | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
   | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
@@ -509,6 +513,7 @@ let ast_iter f = function
   | MLapp (a,l) -> f a; List.iter f l
   | MLcons (_,_,l) | MLtuple l -> List.iter f l
   | MLmagic a -> f a
+  | MLarray64 chunks -> List.iter (Array.iter f) chunks
   | MLparray (t,def) -> Array.iter f t; f def
   | MLrel _ | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
   | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
@@ -549,6 +554,7 @@ let nb_occur_match =
     | MLapp (a,l) -> List.fold_left (fun r a -> r+(nb k a)) (nb k a) l
     | MLcons (_,_,l) | MLtuple l -> List.fold_left (fun r a -> r+(nb k a)) 0 l
     | MLmagic a -> nb k a
+    | MLarray64 chunks -> List.fold_left (Array.fold_left (fun r a -> r + nb k a)) 0 chunks
     | MLparray (t,def) -> Array.fold_left (fun r a -> r+(nb k a)) 0 t + nb k def
     | MLglob _ | MLexn _ | MLdummy _ | MLaxiom _
     | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _
@@ -604,6 +610,10 @@ let dump_unused_vars a =
     | MLmagic b ->
        let b' = ren env b in
        if b' == b then a else MLmagic b'
+
+    | MLarray64 chunks ->
+       let chunks' = List.Smart.map (Array.Smart.map (ren env)) chunks in
+       if chunks == chunks' then a else MLarray64 chunks'
 
     | MLparray(t,def) ->
        let t' = Array.Smart.map (ren env) t in
@@ -1446,6 +1456,7 @@ let rec ml_size = function
   | MLfix(_,_,f) -> ml_size_array f
   | MLletin (_,_,t) -> ml_size t
   | MLmagic t -> ml_size t
+  | MLarray64 chunks -> List.fold_left (fun n t -> n + ml_size_array t) 0 chunks
   | MLparray(t,def) -> ml_size_array t + ml_size def
   | MLglob _ | MLrel _ | MLexn _ | MLdummy _ | MLaxiom _
   | MLuint _ | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _

@@ -295,7 +295,8 @@ let v_case_return = v_tuple_c ("case_return", [|v_tuple_c ("case_return'", [|v_a
     [|v_word256|]; (* v_word256 *)
     [|v_float64|]; (* Float *)
     [|v_string|]; (* v_string *)
-    [|v_instance;v_array v_constr;v_constr;v_constr|] (* v_array *)
+    [|v_instance;v_array v_constr;v_constr;v_constr|]; (* v_array *)
+    [|v_instance;v_list (v_array v_constr);v_constr|] (* v_array64 *)
   |]))
 
 let v_rdecl = v_sum "rel_declaration" 0
@@ -370,8 +371,8 @@ let v_word_width = v_enum "word_width" 6
 let v_word_op = v_enum "word_op" 20
 
 let v_primitive =
-  (* 61 constant constructors plus the allocated [Word (width, op)] case. *)
-  v_sum "primitive" 61 [|[|v_word_width; v_word_op|]|]
+  (* 61 constant constructors plus allocated Word and Array64 operations. *)
+  v_sum "primitive" 61 [|[|v_word_width; v_word_op|];[|v_enum "array64_op" 8|]|]
 
 let v_cst_def =
   v_sum "constant_def" 0
@@ -390,8 +391,8 @@ let v_vm_reloc_table = v_array (v_pair v_int v_int)
 let v_vm_annot_switch = v_tuple "vm_annot_switch" [|v_vm_reloc_table; v_bool; v_int|]
 
 let v_vm_caml_prim =
-  (* Twelve array/string constants plus the allocated width-aware word call. *)
-  v_sum "vm_caml_prim" 12 [|[|v_word_width; v_word_op|]|]
+  (* Thirteen array/string constants plus allocated Word and Array64 calls. *)
+  v_sum "vm_caml_prim" 13 [|[|v_word_width; v_word_op|];[|v_enum "array64_op" 8|]|]
 (* Number of constructors of the caml_prim type in "kernel/vmbytecodes.ml" *)
 
 let v_non_subst_reloc = v_sum "vm_non_subst_reloc" 0 [|
@@ -504,10 +505,10 @@ let v_ind_pack = v_tuple "mutual_inductive_body"
     v_opt v_bool;
     v_typing_flags|]
 
-let v_prim_ind = v_enum "prim_ind" 6
-(* Number of "Register ... as kernel.ind_..." in Primv_int63.v and PrimFloat.v *)
+let v_prim_ind = v_enum "prim_ind" 7
+(* Number of constructors of prim_ind in "kernel/cPrimitives.ml" *)
 
-let v_prim_type = v_enum "prim_type" 10
+let v_prim_type = v_enum "prim_type" 11
 (* Number of constructors of prim_type in "kernel/cPrimitives.ml" *)
 
 let v_retro_action =

@@ -37,6 +37,7 @@ type 'v node =
 | Lcofix        of int * 'v fix_decl
 | Lint          of int
 | Lparray       of 'v lambda array * 'v lambda
+| Larray64      of 'v lambda array list
 | Lmakeblock    of inductive * int * 'v lambda array
   (* inductive name, constructor tag, arguments *)
 | Luint         of Uint63.t
@@ -151,6 +152,9 @@ let rec pp_lam lam =
                pr_annot na ++ str":" ++ pp_lam ty ++
                cut() ++ str":=" ++ pp_lam bd) (Array.to_list fixl)) ++
        str"}")
+  | Larray64 chunks ->
+    str "(array64 " ++ prlist_with_sep spc
+      (fun a -> prlist_with_sep spc pp_lam (Array.to_list a)) chunks ++ str ")"
   | Lparray (args, def) ->
     hov 1
       (str "(array " ++ spc() ++
@@ -303,6 +307,9 @@ let map_lam_with_binders g f n lam =
     let lbodies' = Array.Smart.map (f (g (Array.length ids) n)) lbodies in
     if ltypes == ltypes' && lbodies == lbodies' then lam
     else mknode @@ Lcofix(init,(ids,ltypes',lbodies'))
+  | Larray64 chunks ->
+    let chunks' = List.Smart.map (Array.Smart.map (f n)) chunks in
+    if chunks == chunks' then lam else mknode @@ Larray64 chunks'
   | Lparray (args, def) ->
     let args' = Array.Smart.map (f n) args in
     let def' = f n def in
@@ -348,6 +355,8 @@ let free_rels lam =
     let accu = Array.fold_left (fun accu lam -> aux k accu lam) accu ltypes in
     let accu = Array.fold_left (fun accu lam -> aux (k + Array.length ids) accu lam) accu lbodies in
     accu
+  | Larray64 chunks ->
+    List.fold_left (Array.fold_left (aux k)) accu chunks
   | Lparray (args, def) ->
     let accu = Array.fold_left (fun accu lam -> aux k accu lam) accu args in
     aux k accu def
@@ -405,7 +414,7 @@ let can_subst lam = match node lam with
 | Lrel _ | Lvar _ | Lconst _ | Luint _ | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _
 | Lval _ | Lsort _ | Lind _ -> true
 | Levar _ | Lprod _ | Llam _ | Llet _ | Lapp _ | Lcase _ | Lfix _ | Lcofix _
-| Lparray _ | Lmakeblock _ | Lfloat _ | Lstring _ | Lprim _ | Lproj _ -> false
+| Larray64 _ | Lparray _ | Lmakeblock _ | Lfloat _ | Lstring _ | Lprim _ | Lproj _ -> false
 | Lint _ -> false (* TODO: allow substitution of integers *)
 
 let simplify lam =
@@ -498,6 +507,7 @@ let rec occurrence k kind lam =
     occurrence (k+1) (occurrence k kind def) body
   | Lapp(f, args) ->
     occurrence_args k (occurrence k kind f) args
+  | Larray64 chunks -> List.fold_left (occurrence_args k) kind chunks
   | Lparray (args, def) ->
     occurrence_args k (occurrence k kind def) args
   | Lprim(_,_,args) | Lmakeblock(_, _,args) ->
@@ -534,7 +544,7 @@ let is_value lam = match node lam with
 | Lrel _ | Lvar _ | Lconst _ | Luint _ | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _
 | Lval _ | Lsort _ | Lind _ | Lint _ | Llam _ | Lfix _ | Lcofix _ | Lfloat _ | Lstring _ -> true
 | Levar _ | Lprod _ | Llet _ | Lapp _ | Lcase _
-| Lparray _ | Lmakeblock _ | Lprim _ | Lproj _ -> false
+| Larray64 _ | Lparray _ | Lmakeblock _ | Lprim _ | Lproj _ -> false
 
 let rec remove_let subst lam =
   match lam.node with
@@ -795,6 +805,13 @@ let rec lambda_of_constr cache env sigma c =
   | Float f -> mknode @@ Lfloat f
 
   | String s -> mknode @@ (Lstring s)
+
+  | Array64 (_u, chunks, _ty) ->
+    (* Serialized literal payloads may have noncanonical or empty chunks.
+       Normalize before choosing bounded VM block sizes. *)
+    let chunks = Array64chunks.of_arrays (Array64chunks.to_arrays chunks) in
+    mknode @@ Larray64 (List.map (lambda_of_args cache env sigma 0)
+      (Array64chunks.to_arrays chunks))
 
   | Array (_u, t, def, _ty) ->
     let def = lambda_of_constr cache env sigma def in

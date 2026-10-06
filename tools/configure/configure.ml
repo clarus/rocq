@@ -44,7 +44,7 @@ let vo_magic =
   in
   (* Native integer fork: distinguish objects from stock Rocq and the
      experimental six-width format (90346). *)
-  let primitive_words_fork_offset = 47 in
+  let primitive_words_fork_offset = 48 in
   major * 10_000 + minor * 100 + patch + primitive_words_fork_offset
 
 (* NB: not the same as checking patch = Release,

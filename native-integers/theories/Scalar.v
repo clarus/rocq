@@ -135,10 +135,10 @@ Module Make (P : RAW_SCALAR).
     match fuel with
     | O => 0%N
     | S fuel' =>
-        let high := to_N_fuel fuel' (P.lsr value one) in
-        if eqb (logand value one) zero
-        then N.double high
-        else N.succ_double high
+        (* Keep the recursive call outside the symbolic branches. Otherwise
+           conversion can duplicate it at every bit when checking proofs. *)
+        (if eqb (logand value one) zero then N.double else N.succ_double)
+          (to_N_fuel fuel' (P.lsr value one))
     end.
 
   Definition to_N (value : t) : N := to_N_fuel bits value.

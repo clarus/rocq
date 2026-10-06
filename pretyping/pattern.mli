@@ -48,6 +48,7 @@ type 'i constr_pattern_r =
   | PFloat of Float64.t
   | PString of Pstring.t
   | PArray of 'i constr_pattern_r array * 'i constr_pattern_r * 'i constr_pattern_r
+  | PArray64 of 'i constr_pattern_r Array64chunks.t * 'i constr_pattern_r
   | PExtra of 'i
 
 type constr_pattern = Util.Empty.t constr_pattern_r

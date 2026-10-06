@@ -931,7 +931,7 @@ let is_rigid_head sigma flags t =
   match EConstr.kind sigma t with
   | Const (cst,u) -> not (Structures.PrimitiveProjections.is_transparent_constant flags.modulo_delta cst)
   | Ind (i,u) -> true
-  | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> true
+  | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> true
   | Fix _ | CoFix _ -> true
   | Rel _ | Var _ | Meta _ | Evar _ | Sort _ | Cast (_, _, _) | Prod _
     | Lambda _ | LetIn _ | App (_, _) | Case _
@@ -1034,7 +1034,7 @@ let rec is_neutral env sigma ts t =
     | Evar _ | Meta _ -> true
     | Case (_, _, _, _, _, c, _) -> is_neutral env sigma ts c
     | Proj (p, _, c) -> is_neutral env sigma ts c
-    | Lambda _ | LetIn _ | Construct _ | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ -> false
+    | Lambda _ | LetIn _ | Construct _ | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> false
     | Sort _ | Cast (_, _, _) | Prod (_, _, _) | Ind _ -> false (* Really? *)
     | Fix _ -> false (* This is an approximation *)
     | App _ -> assert false
@@ -2269,6 +2269,7 @@ type 'aconstr akind =
   | AApp of 'aconstr * 'aconstr array
   | ACast of 'aconstr (* only the main term *)
   | AOther of 'aconstr array
+  | AChunks of 'aconstr Array64chunks.t * 'aconstr
 
 type atyp =
 | ATySort
@@ -2387,6 +2388,10 @@ let rec make0 atyp sigma c0 = match EConstr.kind sigma c0 with
   let bld, bl = make_array sigma bl in
   let data = max tld (liftn (Array.length tl) bld) in
   { proj = c0; self = AOther (Array.append tl bl); data; atyp }
+| Array64(_,t,ty) ->
+  let td, t = Array64chunks.fold_map (fun n c -> let c = make sigma c in max n c.data, c) 0 t in
+  let ty = make sigma ty in
+  { proj = c0; self = AChunks(t,ty); data = max td ty.data; atyp }
 | Array(u,t,def,ty) ->
   let td, t = make_array sigma t in
   let def = make sigma def in
@@ -2510,6 +2515,10 @@ let w_unify_to_subterm ~metas env evd ?where ?(flags=default_unify_flags ()) (op
           | None -> matchrec c2
           end
         end
+      | AChunks(a,ty) ->
+        let result = Array64chunks.fold_left (fun acc x ->
+            match acc with Some _ -> acc | None -> matchrec x) None a in
+        begin match result with Some _ -> result | None -> matchrec ty end
       | AOther a -> matchrec_array 0 a
   and matchrec_array i args =
     if Array.length args <= i then None
@@ -2583,6 +2592,8 @@ let w_unify_to_subterm_all ~metas env evd ?(flags=default_unify_flags ()) (op,cl
             | Lambda (_,t,c) ->
                 bind (matchrec t) (matchrec c)
 
+            | Array64(_,t,ty) ->
+              Array64chunks.fold_right (fun x next -> bind (matchrec x) next) t (matchrec ty)
             | Array(_u,t,def,ty) ->
               bind (bind (bind_iter matchrec t) (matchrec def)) (matchrec ty)
 

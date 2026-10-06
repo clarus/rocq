@@ -368,9 +368,9 @@ Module Prove (I : DERIVED_INPUT).
     induction fuel as [|fuel IH]; intros Hfuel x.
     - change (0 = unsigned x mod 1). symmetry. apply Z.mod_1_r.
     - change (Z.of_N
-        (let high := API.to_N_fuel fuel (I.Raw.lsr x API.one) in
-         if I.Raw.eqb (I.Raw.land x API.one) API.zero
-         then N.double high else N.succ_double high) =
+        ((if I.Raw.eqb (I.Raw.land x API.one) API.zero
+          then N.double else N.succ_double)
+         (API.to_N_fuel fuel (I.Raw.lsr x API.one))) =
         unsigned x mod pow2_nat (S fuel)).
       cbv zeta.
       fold API.eqb; fold API.logand; fold API.zero.

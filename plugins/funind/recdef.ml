@@ -253,6 +253,9 @@ let check_not_nested env sigma forbidden e =
     | LetIn (_, v, t, b) ->
       check_not_nested t; check_not_nested b; check_not_nested v
     | App (f, l) -> check_not_nested f
+    | Array64 (_u, chunks, ty) ->
+      Array64chunks.iter check_not_nested chunks;
+      check_not_nested ty
     | Array (_u, t, def, ty) ->
       Array.iter check_not_nested t;
       check_not_nested def;
@@ -395,7 +398,7 @@ let rec travel_aux jinfo continuation_tac (expr_info : constr infos) =
       match EConstr.kind sigma expr_info.info with
       | CoFix _ | Fix _ ->
         user_err Pp.(str "Function cannot treat local fixpoint or cofixpoint")
-      | Array _ -> user_err Pp.(str "Function cannot treat arrays")
+      | Array _ | Array64 _ -> user_err Pp.(str "Function cannot treat arrays")
       | Proj _ -> user_err Pp.(str "Function cannot treat projections")
       | LetIn (na, b, t, e) ->
         let new_continuation_tac =
@@ -460,7 +463,7 @@ let rec travel_aux jinfo continuation_tac (expr_info : constr infos) =
           | Fix _ -> user_err Pp.(str "Function cannot treat local fixpoint or cofixpoint")
           | Proj _ -> user_err Pp.(str "Function cannot treat projections")
           | Lambda _ | Cast _ | LetIn _
-          | CoFix _ | Array _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ ->
+          | CoFix _ | Array _ | Array64 _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ ->
             anomaly
               ( Pp.str "travel_aux : unexpected "
               ++ Printer.pr_leconstr_env env sigma expr_info.info

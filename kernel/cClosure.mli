@@ -58,6 +58,7 @@ type fterm =
   | FWord256 of Primitive_words_runtime.Word256.t
   | FFloat of Float64.t
   | FString of Pstring.t
+  | FArray64 of UVars.Instance.t * fconstr Parray64.t * fconstr
   | FArray of UVars.Instance.t * fconstr Parray.t * fconstr
   | FLIFT of int * fconstr
   | FCLOS of constr * usubs

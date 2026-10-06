@@ -9,7 +9,7 @@
 (************************************************************************)
 
 Require Import Ltac2.Init.
-Require Ltac2.Ind Ltac2.Array.
+Require Ltac2.Ind Ltac2.Array Ltac2.List.
 
 Ltac2 @ external type : constr -> constr := "rocq-runtime.plugins.ltac2" "constr_type".
 (** Return the type of a term *)
@@ -164,6 +164,8 @@ Ltac2 Type kind := [
   | String (pstring)
   | Array (instance, constr array, constr, constr)
    (** [Array u vals def t] is the primitive array literal [[|vals | def : t|]@{u}]. *)
+  | Array64 (instance, constr array list, constr)
+   (** [Array64 u chunks t] contains dense chunks of elements of type [t]. *)
 ].
 
 Ltac2 @ external kind : constr -> kind := "rocq-runtime.plugins.ltac2" "constr_kind".
@@ -269,6 +271,8 @@ Ltac2 iter (f : constr -> unit) (c : constr) : unit :=
   | CoFix _ tl bl =>
       Array.iter (fun b => f (Binder.type b)) tl;
       Array.iter f bl
+  | Array64 _u chunks ty =>
+      f ty; List.iter (Array.iter f) chunks
   | Array _u t def ty =>
       f ty; Array.iter f t; f def
   end.
@@ -302,6 +306,8 @@ Ltac2 iter_with_binders (g : 'a -> binder -> 'a) (f : 'a -> constr -> unit) (n :
       Array.iter (fun b => f n (Binder.type b)) tl;
       let n := Array.fold_left g n tl in
       Array.iter (f n) bl
+  | Array64 _u chunks ty =>
+      f n ty; List.iter (Array.iter (f n)) chunks
   | Array _u t def ty =>
       f n ty;
       Array.iter (f n) t;
@@ -365,6 +371,10 @@ Ltac2 map (f : constr -> constr) (c : constr) : constr :=
       let tl := Array.map (binder_map f) tl
       with bl := Array.map f bl in
       make (CoFix which tl bl)
+  | Array64 u chunks ty =>
+      let ty := f ty
+      with chunks := List.map (Array.map f) chunks in
+      make (Array64 u chunks ty)
   | Array u t def ty =>
       let ty := f ty
       with t := Array.map f t
@@ -423,6 +433,10 @@ Ltac2 map_with_binders (lift : 'a -> binder -> 'a) (f : 'a -> constr -> constr) 
       let n_bl := Array.fold_left lift n tl in
       let bl := Array.map (f n_bl) bl in
       make (CoFix which tl bl)
+  | Array64 u chunks ty =>
+      let ty := f n ty
+      with chunks := List.map (Array.map (f n)) chunks in
+      make (Array64 u chunks ty)
   | Array u t def ty =>
       let ty := f n ty
       with t := Array.map (f n) t
@@ -592,6 +606,12 @@ Ltac2 is_string(c: constr) :=
 Ltac2 is_array(c: constr) :=
   match Unsafe.kind c with
   | Unsafe.Array _ _ _ _ => true
+  | _ => false
+  end.
+
+Ltac2 is_array64(c: constr) :=
+  match Unsafe.kind c with
+  | Unsafe.Array64 _ _ _ => true
   | _ => false
   end.
 
