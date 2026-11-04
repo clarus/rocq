@@ -187,6 +187,7 @@ let rec infer_fterm cv_pb infos variances hd stk =
   | FEvar _ -> assert false
   | FRel _ -> infer_stack infos variances stk
   | FInt _ -> infer_stack infos variances stk
+  | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _ -> infer_stack infos variances stk
   | FFloat _ -> infer_stack infos variances stk
   | FString _ -> infer_stack infos variances stk
   | FFlex Names.(RelKey _ | VarKey _ as fl) ->
@@ -243,6 +244,11 @@ let rec infer_fterm cv_pb infos variances hd stk =
       let infos = push_relevances infos na in
       infer_vect infos variances (Array.map (mk_clos le) cl)
     in
+    infer_stack infos variances stk
+  | FArray64 (u,elems,ty) ->
+    let variances = infer_generic_instance_eq variances (instance_univs u) in
+    let variances = infer_fterm CONV infos variances ty [] in
+    let variances = Parray64.fold_left (fun v x -> infer_fterm CONV infos v x []) variances elems in
     infer_stack infos variances stk
   | FArray (u,elemsdef,ty) ->
     let variances = infer_generic_instance_eq variances (instance_univs u) in

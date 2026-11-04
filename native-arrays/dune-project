@@ -1,0 +1,9 @@
+(lang dune 3.21)
+(name rocq-native-arrays)
+(using rocq 0.11)
+(generate_opam_files true)
+(version dev)
+(package
+ (name rocq-native-arrays)
+ (synopsis "Proofs for native persistent arrays with 64-bit indices")
+ (depends rocq-core rocq-stdlib rocq-primitive-words))

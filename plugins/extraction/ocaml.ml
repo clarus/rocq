@@ -318,12 +318,51 @@ let rec pp_expr table par env args =
     | MLuint i ->
         assert (args=[]);
         str "(" ++ str (Uint63.compile i) ++ str ")"
+    | MLword8 i ->
+        assert (args=[]);
+        str "(Primitive_words_runtime.Word8.of_int " ++
+        int (Primitive_words_runtime.Word8.to_int i) ++ str ")"
+    | MLword16 i ->
+        assert (args=[]);
+        str "(Primitive_words_runtime.Word16.of_int " ++
+        int (Primitive_words_runtime.Word16.to_int i) ++ str ")"
+    | MLword32 i ->
+        assert (args=[]);
+        str "(Primitive_words_runtime.Word32.of_int32 " ++
+        str (Printf.sprintf "0x%08lxl"
+          (Primitive_words_runtime.Word32.to_int32 i)) ++ str ")"
+    | MLword64 i ->
+        assert (args=[]);
+        str "(Primitive_words_runtime.Word64.of_int64 " ++
+        str (Printf.sprintf "0x%016LxL"
+          (Primitive_words_runtime.Word64.to_int64 i)) ++ str ")"
+    | MLword128 i ->
+        assert (args=[]);
+        let low, high = Primitive_words_runtime.Word128.to_limbs i in
+        str (Printf.sprintf
+          "(Primitive_words_runtime.Word128.of_limbs ~low:0x%016LxL ~high:0x%016LxL)"
+          low high)
+    | MLword256 i ->
+        assert (args=[]);
+        let limb0, limb1, limb2, limb3 =
+          Primitive_words_runtime.Word256.to_limbs i in
+        str (Printf.sprintf
+          "(Primitive_words_runtime.Word256.of_limbs ~limb0:0x%016LxL ~limb1:0x%016LxL ~limb2:0x%016LxL ~limb3:0x%016LxL)"
+          limb0 limb1 limb2 limb3)
     | MLfloat f ->
         assert (args=[]);
         str "(" ++ str (Float64.compile f) ++ str ")"
     | MLstring s ->
         assert (args=[]);
         str "(" ++ str (Pstring.compile s) ++ str ")"
+    | MLarray64 [] ->
+      assert (args=[]);
+      str "Parray64.empty"
+    | MLarray64 chunks ->
+      assert (args=[]);
+      let chunk t = str "[|" ++
+        prlist_with_sep pr_semicolon (pp_expr table true env []) (Array.to_list t) ++ str "|]" in
+      str "(Parray64.of_chunks [" ++ prlist_with_sep pr_semicolon chunk chunks ++ str "])"
     | MLparray(t,def) ->
       assert (args=[]);
       let tuple = prlist_with_sep pr_semicolon (pp_expr table true env []) (Array.to_list t) in

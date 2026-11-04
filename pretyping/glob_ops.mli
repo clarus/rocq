@@ -47,6 +47,10 @@ val cast_kind_eq : Constr.cast_kind ->  Constr.cast_kind -> bool
 
 val glob_constr_eq : 'a glob_constr_g -> 'a glob_constr_g -> bool
 
+(** Print a primitive Array64 literal as an ordinary construction expression. *)
+val array64_literal : glob_instance option -> 'a glob_constr_g Array64chunks.t ->
+  'a glob_constr_g -> 'a glob_constr_r
+
 (** Operations on [glob_constr] *)
 
 val cases_pattern_loc : 'a cases_pattern_g -> Loc.t option

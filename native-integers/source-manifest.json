@@ -1,0 +1,247 @@
+{
+  "files": {
+    "compat/PrimitiveWordAdapters.v": {
+      "sha256": "f4bd73355a4f51b3586888eca02a748a9b27c8d927ed29cd1c5afd15b2a97cd2",
+      "source": "theories/PrimitiveWordAdapters.v"
+    },
+    "patch:0001-distinct-vo-version.patch": {
+      "sha256": "36df7920203fa12de3be962a408520f7f02d630eb9e8b13b8972c993d9f61a12",
+      "source": "toolchain/patches/0001-distinct-vo-version.patch"
+    },
+    "patch:0002-rocq-global-list-wrappers.patch": {
+      "sha256": "f3bc77393379f402279dd21a7bfabcf52686d4ccf41e3337777141d2a45fa013",
+      "source": "toolchain/patches/0002-rocq-global-list-wrappers.patch"
+    },
+    "patch:0003-primitive-words-runtime-wiring.patch": {
+      "sha256": "37264c3e644e7c7f3e9ea5076f9363484e4dfbf27399672220cfc43927c23c1a",
+      "source": "toolchain/patches/0003-primitive-words-runtime-wiring.patch"
+    },
+    "patch:0004-word64-kernel-pilot.patch": {
+      "sha256": "a73cb7def06d6ca5b5d8056a5bcd6f25cf8bb6babfdd060c93aacf88c5df497a",
+      "source": "toolchain/patches/0004-word64-kernel-pilot.patch"
+    },
+    "patch:0005-word64-vm-extraction.patch": {
+      "sha256": "f18a4dbc3111be461654cc5029f43f1f199fb0acaed64dbd9a42f7c7128bc90d",
+      "source": "toolchain/patches/0005-word64-vm-extraction.patch"
+    },
+    "patch:0006-small-word-runtime.patch": {
+      "sha256": "23ac8bf9afb8151bb61dd7ce505d84a7ba17defb8284a68cee04410753bdf01d",
+      "source": "toolchain/patches/0006-small-word-runtime.patch"
+    },
+    "patch:0007-scalar-kernel-vm.patch": {
+      "sha256": "0a04a2cf3b8e88c39d4d4cad6303896141f9c36abf5ca4b774ef41ca8fc3636a",
+      "source": "toolchain/patches/0007-scalar-kernel-vm.patch"
+    },
+    "patch:0008-scalar-public-extraction.patch": {
+      "sha256": "72fb81906312ab40bcdd2732f4ae013d332d6908e5810d6f447ab4b3cdea78d1",
+      "source": "toolchain/patches/0008-scalar-public-extraction.patch"
+    },
+    "patch:0009-wide-kernel-vm.patch": {
+      "sha256": "f5a96da17b8978d425605c3576c6433755fea73df0cba0bf37b3c9317d269537",
+      "source": "toolchain/patches/0009-wide-kernel-vm.patch"
+    },
+    "patch:0010-wide-public-extraction.patch": {
+      "sha256": "dbc3a77924ebbe697ef53e5cb713530cf51cce916cccf1a2c7a4bf678ba91570",
+      "source": "toolchain/patches/0010-wide-public-extraction.patch"
+    },
+    "runtime:primitive_words_runtime.ml": {
+      "sha256": "637efb477b9955969c4c3d99cd4e9e9f04753c3b4c2307505dbc64b51b903722",
+      "source": "toolchain/runtime/primitive_words_runtime.ml"
+    },
+    "runtime:primitive_words_runtime.mli": {
+      "sha256": "19f46bf586e854a21eefb56e376f1b5e841518fe58847d3cb23be3c3b59321b5",
+      "source": "toolchain/runtime/primitive_words_runtime.mli"
+    },
+    "runtime:rocq_primitive_words_runtime.c": {
+      "sha256": "fdf7cd584c30b93dbb1a81c835843fd784adbab8b254c7c00cc3988772a22bff",
+      "source": "toolchain/runtime/rocq_primitive_words_runtime.c"
+    },
+    "tests/PW020Differential.v": {
+      "sha256": "5fab9be2376daf7c9cc32b653f7645ed2f027ac1274b8aadd36df147b50ec39b",
+      "source": "toolchain/smoke/PW020Differential.v"
+    },
+    "tests/PW020SignedShiftRegression.v": {
+      "sha256": "c4ef2a32891c15aa3c379fc32452cbe8c46e2fab7052111ece52817464c5cf69",
+      "source": "toolchain/smoke/PW020SignedShiftRegression.v"
+    },
+    "tests/PW032FreshLoad.v": {
+      "sha256": "88228ba6aac7e5d9d98d50d4dee732f6432a7b6e08fc2afd08b09d31241fbb05",
+      "source": "toolchain/smoke/PW032FreshLoad.v"
+    },
+    "tests/PW032Matrix.v": {
+      "sha256": "c5d91cc8fe61c48ba04f3d9142360380e5cc47cc06280529eb3d0b5a430f8f9c",
+      "source": "toolchain/smoke/PW032Matrix.v"
+    },
+    "tests/PW045Use.v": {
+      "sha256": "32e6cc4f1813bf6e44427c31d7a0621e1981a15d002a1e2694d510034d85b464",
+      "source": "toolchain/smoke/PW045Use.v"
+    },
+    "tests/pw024_static_audit.py": {
+      "sha256": "ee3b0ca99476ed915fd46fe3d698f207e35037156ab5aef085e61e9ca6c8c13e",
+      "source": "toolchain/runtime/pw024_static_audit.py"
+    },
+    "tests/pw024_vectors.py": {
+      "sha256": "da84c0ccb0b1bf19aea6e5d71e907a9f690a10c3de62d1a2b3313d1d0c48aa3f",
+      "source": "toolchain/runtime/pw024_vectors.py"
+    },
+    "tests/pw024_wide_check.ml": {
+      "sha256": "bee0373c0736453cd017b2d8988dbf833ac9f95e88c7c8bf77cfaef233185ca0",
+      "source": "toolchain/runtime/pw024_wide_check.ml"
+    },
+    "tests/pw025_identity_check.ml": {
+      "sha256": "a3033e0cd40192bcb3878f31b6be0d52a248303af1290a7a40e200a6478139df",
+      "source": "toolchain/runtime/pw025_identity_check.ml"
+    },
+    "tests/pw031_campaign.py": {
+      "sha256": "cba46d668c2f23c535046917507822425a2ec30a88cec5c13754bf058b2459cc",
+      "source": "toolchain/runtime/pw031_campaign.py"
+    },
+    "tests/pw031_extracted_main.ml": {
+      "sha256": "1855b2e00b7d91867372225bedd66f8a770c23d34f8f65125e731bc7588fcbe0",
+      "source": "toolchain/runtime/pw031_extracted_main.ml"
+    },
+    "tests/pw032_boundary_check.ml": {
+      "sha256": "d897f2ea030bf9d99ca2e3c9bd0624db55868d6a37b4f24b62e58948d48bbad4",
+      "source": "toolchain/runtime/pw032_boundary_check.ml"
+    },
+    "tests/pw032_extracted_main.ml": {
+      "sha256": "18250d266b589b20b977a571b19c95f2cc4a69686bfeb188ed98244f8a4b7200",
+      "source": "toolchain/runtime/pw032_extracted_main.ml"
+    },
+    "tests/pw032_marshal_audit.py": {
+      "sha256": "11e4f5f22c03d9b3e2a5ab80abe7305e2b02444773f6d12b7803cca3a83f6ee5",
+      "source": "toolchain/runtime/pw032_marshal_audit.py"
+    },
+    "tests/pw032_matrix.py": {
+      "sha256": "28747af16f46b03ca9d4b679e3c7d4c28302c5ee2413eceba8d0d7222a73d162",
+      "source": "toolchain/runtime/pw032_matrix.py"
+    },
+    "tests/pw046_generate.py": {
+      "sha256": "622022e83a5aa7afcadecec1716924bb86fa3fd1a011b81416eb46347c1f7845",
+      "source": "toolchain/runtime/pw046_generate.py"
+    },
+    "theories/Conversions.v": {
+      "sha256": "f98b22d4f40b127e6c89a0b547279756766adb712317d21e19ec324f437182c2",
+      "source": "theories/Conversions.v"
+    },
+    "theories/PrimitiveWordAxioms.v": {
+      "sha256": "9775f182929531c1c0c2dc289834b5fd592c7fc175bd568540754ee01cc24221",
+      "source": "theories/PrimitiveWordAxioms.v"
+    },
+    "theories/PrimitiveWordBounds.v": {
+      "sha256": "050488fe4fcfdc0a15449b4f79698477af5a322cd28a6166936c25484b175db2",
+      "source": "theories/PrimitiveWordBounds.v"
+    },
+    "theories/PrimitiveWordConversion128To256.v": {
+      "sha256": "dc6da4fe43db468f6bfed4958549d53172c6aedc73827ed0cb04cbec281915f1",
+      "source": "theories/PrimitiveWordConversion128To256.v"
+    },
+    "theories/PrimitiveWordConversion16To128.v": {
+      "sha256": "2c944f89781cbf60cdb82effb5f16f0a6e1a1040e440f15c99acb734e246c0f2",
+      "source": "theories/PrimitiveWordConversion16To128.v"
+    },
+    "theories/PrimitiveWordConversion16To256.v": {
+      "sha256": "b1fe9c236cf1812204aa8177f06efd1339f55510c7d25964dfdeec6658b4873d",
+      "source": "theories/PrimitiveWordConversion16To256.v"
+    },
+    "theories/PrimitiveWordConversion16To32.v": {
+      "sha256": "583efa0d7a294534f40293de8f0e68c3bcc8b1ec5e60fd9383ed83502dd3380e",
+      "source": "theories/PrimitiveWordConversion16To32.v"
+    },
+    "theories/PrimitiveWordConversion16To64.v": {
+      "sha256": "cc97eac254f684a36192d9eceb9160f6d6737277d8bfbee52e0e6c1f2a63850c",
+      "source": "theories/PrimitiveWordConversion16To64.v"
+    },
+    "theories/PrimitiveWordConversion32To128.v": {
+      "sha256": "6c91f498acec3821fa1d241123a4c50a751645e682792004cd540e007b1ac0ef",
+      "source": "theories/PrimitiveWordConversion32To128.v"
+    },
+    "theories/PrimitiveWordConversion32To256.v": {
+      "sha256": "1c95f007049d4d8da85efc2edc52911f5f4b9ec6d5d53d2b929a0f3fea8fda66",
+      "source": "theories/PrimitiveWordConversion32To256.v"
+    },
+    "theories/PrimitiveWordConversion32To64.v": {
+      "sha256": "f7f682499f6e465d015a1a2f57616652abd6d3dd17d9f1f21866a15f0245c7e2",
+      "source": "theories/PrimitiveWordConversion32To64.v"
+    },
+    "theories/PrimitiveWordConversion64To128.v": {
+      "sha256": "5a8095c21ac38875227d5e5b73db693e2864f6a544abcd340987e2105f53a240",
+      "source": "theories/PrimitiveWordConversion64To128.v"
+    },
+    "theories/PrimitiveWordConversion64To256.v": {
+      "sha256": "8ef36da542aef1f6dd1845862c8ca04a053970ed815dba9e2acdc743f025f371",
+      "source": "theories/PrimitiveWordConversion64To256.v"
+    },
+    "theories/PrimitiveWordConversion8To128.v": {
+      "sha256": "0d097d2b5624d71ca8311200eafccb4500814adeea98ad943c73c44b38f01ada",
+      "source": "theories/PrimitiveWordConversion8To128.v"
+    },
+    "theories/PrimitiveWordConversion8To16.v": {
+      "sha256": "c38b7ace238f1c00cf1c85241e04112d13ff6932af0f85d5c5ff9beb977ad3bb",
+      "source": "theories/PrimitiveWordConversion8To16.v"
+    },
+    "theories/PrimitiveWordConversion8To256.v": {
+      "sha256": "4a242444408f3a0c02ea11d7f3c9f9f2ac1c94c4644a900b70767aaec094f85c",
+      "source": "theories/PrimitiveWordConversion8To256.v"
+    },
+    "theories/PrimitiveWordConversion8To32.v": {
+      "sha256": "ed209100c162e6012d01f4729c1bf784ebc565936d938d12e7bd7a8e09e3386c",
+      "source": "theories/PrimitiveWordConversion8To32.v"
+    },
+    "theories/PrimitiveWordConversion8To64.v": {
+      "sha256": "40e68f713342e758ce5868bd12341609ecba9243176b7f1757dcfe7a0f1b0f36",
+      "source": "theories/PrimitiveWordConversion8To64.v"
+    },
+    "theories/PrimitiveWordDerived.v": {
+      "sha256": "269a028c4cda1a791a4ce67e616040c4146d6efdf2316b241cec21cec7baf90a",
+      "source": "theories/PrimitiveWordDerived.v"
+    },
+    "theories/PrimitiveWordSpec.v": {
+      "sha256": "2cabe1f675600e9ace36fbaf2eee82357b2f09db49800c6a044ddf966db39b94",
+      "source": "theories/PrimitiveWordSpec.v"
+    },
+    "theories/Scalar.v": {
+      "sha256": "c9b3399f5f9cd4a0eb0cdca34d1a9476b6d288d5d1876d1531a0f02ae32f6a68",
+      "source": "theories/Scalar.v"
+    },
+    "theories/ScalarExtraction.v": {
+      "sha256": "f2a95e2c2c963192ae1a143bebd4397966f7c26edd8a3c9144fdcf45effc4285",
+      "source": "theories/ScalarExtraction.v"
+    },
+    "theories/Word128.v": {
+      "sha256": "4061ad56dda6fd4c61b881d45e25369737271692d8f349c15d68b002608a64a7",
+      "source": "theories/Word128.v"
+    },
+    "theories/Word16.v": {
+      "sha256": "f4e80e6a1de5979bf39c2246108f61116449366ee6c0f966048d0b3d9e0ceb5f",
+      "source": "theories/Word16.v"
+    },
+    "theories/Word256.v": {
+      "sha256": "a88f88c7e271d2307f0a2f425c425f6117a63bf23f65bb3c62403fff803b7dab",
+      "source": "theories/Word256.v"
+    },
+    "theories/Word32.v": {
+      "sha256": "8d6cacc9809f13ca3d586a770fe48a6ca628c548fe22f43d6423640a86372919",
+      "source": "theories/Word32.v"
+    },
+    "theories/Word64.v": {
+      "sha256": "c0b4dc5822b85349300290bd3f1edbf0a457d7e67bb91de95d7b50e059e4c50e",
+      "source": "theories/Word64.v"
+    },
+    "theories/Word8.v": {
+      "sha256": "fd40ae60377ed778772b58908fcf77fabaa7e16d2fbb648f19f16cd5dc29cc77",
+      "source": "theories/Word8.v"
+    }
+  },
+  "object_format": 90347,
+  "rocq_base": "d91dbf084f",
+  "source_commit": "e370c7e7a9d71d3aae5c2a2924bb2b8868dff971",
+  "widths": [
+    8,
+    16,
+    32,
+    64,
+    128,
+    256
+  ]
+}

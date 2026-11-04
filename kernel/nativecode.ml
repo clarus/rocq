@@ -49,10 +49,11 @@ module LNset = Set.Make(LNord)
 let rec is_lazy env t =
   match Constr.kind t with
   | App _ | LetIn _ | Case _ | Proj _ -> true
+  | Array64 (_, chunks, _) -> Array64chunks.exists (is_lazy env) chunks
   | Array (_, t, d, _) -> Array.exists (fun t -> is_lazy env t) t || is_lazy env d
   | Cast (c, _, _) | Prod (_, c, _) -> is_lazy env c
   | Const (c, _) -> get_const_lazy env c
-  | Rel _ | Meta _ | Var _ | Sort _ | Ind _ | Construct _ | Int _
+  | Rel _ | Meta _ | Var _ | Sort _ | Ind _ | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _
   | Float _ | String _ | Lambda _ | Evar _ | Fix _ | CoFix _ ->
     false
 
@@ -1276,7 +1277,14 @@ let compile_prim env decl cond paux =
           let check = match ty with
           | CPrimitives.PT_float64 -> Is_float
           | CPrimitives.PT_array -> Is_parray
+          | CPrimitives.PT_array64 ->
+            CErrors.user_err Pp.(str "Native evaluation of Array64 is unsupported; use vm_compute")
           | CPrimitives.PT_int63 -> assert false
+          | CPrimitives.PT_word8 | CPrimitives.PT_word16
+          | CPrimitives.PT_word32 | CPrimitives.PT_word64 ->
+            CErrors.user_err Pp.(str "Rocq native evaluation of primitive words is unsupported; use vm_compute")
+          | CPrimitives.PT_word128 | CPrimitives.PT_word256 ->
+            CErrors.user_err Pp.(str "Rocq native evaluation of primitive words is unsupported; use vm_compute")
           | CPrimitives.PT_string -> Is_string
           in
            List.fold_left
@@ -1338,6 +1346,8 @@ let compile_prim env decl cond paux =
     let i = Projection.Repr.arg p in
     let prefix = env.env_mind_prefix (fst ind) in
     MLapp (MLglobal(Gproj (prefix, ind, i)), [| ml_of_lam env l c |])
+  | Lprim (_, CPrimitives.Array64 _, _) ->
+    CErrors.user_err Pp.(str "Native evaluation of Array64 is unsupported; use vm_compute")
   | Lprim _ ->
     let decl,cond,paux = extract_prim env (ml_of_lam env l) t in
     compile_prim env decl cond paux
@@ -1545,8 +1555,13 @@ let compile_prim env decl cond paux =
      let args = Array.map (ml_of_lam env l) args in
      MLconstruct(prefix,cn,tag,args)
   | Luint i -> MLprimitive (Mk_uint, [|MLuint i|])
+  | Lword8 _ | Lword16 _ | Lword32 _ | Lword64 _ | Lword128 _ | Lword256 _ ->
+    CErrors.user_err
+      Pp.(str "Rocq native evaluation of primitive words is unsupported; use vm_compute")
   | Lfloat f -> MLprimitive (Mk_float, [|MLfloat f|])
   | Lstring s -> MLprimitive (Mk_string, [|MLstring s|])
+  | Larray64 _ ->
+    CErrors.user_err Pp.(str "Native evaluation of Array64 is unsupported; use vm_compute")
   | Lparray (t,def) ->
     let def = ml_of_lam env l def in
     MLprimitive (MLparray_of_array, [| MLarray (Array.map (ml_of_lam env l) t); def |])

@@ -35,6 +35,9 @@ type caml_prim =
 | CAML_Stringsub
 | CAML_Stringcat
 | CAML_Stringcompare
+| CAML_Word of CPrimitives.word_width * CPrimitives.word_op
+| CAML_Array64 of CPrimitives.array64_op
+| CAML_Array64ofchunks
 
 type instruction =
   | Klabel of Label.t
@@ -78,6 +81,9 @@ type instruction =
   | Kcamlprim of caml_prim * Label.t
 
 and bytecodes = instruction list
+
+val equal_caml_prim : caml_prim -> caml_prim -> bool
+val hash_caml_prim : caml_prim -> int
 
 val pp_bytecodes : bytecodes -> Pp.t
 

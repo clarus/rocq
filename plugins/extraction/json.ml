@@ -161,6 +161,38 @@ let rec json_expr table env = function
       ("what", json_str "expr:int");
       ("int", json_str (Uint63.to_string i))
     ]
+  | MLword8 i -> json_dict [
+      ("what", json_str "expr:word8");
+      ("int", json_str (string_of_int (Primitive_words_runtime.Word8.to_int i)))
+    ]
+  | MLword16 i -> json_dict [
+      ("what", json_str "expr:word16");
+      ("int", json_str (string_of_int (Primitive_words_runtime.Word16.to_int i)))
+    ]
+  | MLword32 i -> json_dict [
+      ("what", json_str "expr:word32");
+      ("int", json_str (Printf.sprintf "0x%08lx"
+        (Primitive_words_runtime.Word32.to_int32 i)))
+    ]
+  | MLword64 i -> json_dict [
+      ("what", json_str "expr:word64");
+      ("int", json_str (Printf.sprintf "0x%016Lx"
+        (Primitive_words_runtime.Word64.to_int64 i)))
+    ]
+  | MLword128 i ->
+    let low, high = Primitive_words_runtime.Word128.to_limbs i in
+    json_dict [
+      ("what", json_str "expr:word128");
+      ("int", json_str (Printf.sprintf "0x%016Lx%016Lx" high low))
+    ]
+  | MLword256 i ->
+    let limb0, limb1, limb2, limb3 =
+      Primitive_words_runtime.Word256.to_limbs i in
+    json_dict [
+      ("what", json_str "expr:word256");
+      ("int", json_str (Printf.sprintf "0x%016Lx%016Lx%016Lx%016Lx"
+        limb3 limb2 limb1 limb0))
+    ]
   | MLfloat f -> json_dict [
       ("what", json_str "expr:float");
       ("float", json_str (Float64.to_string f))
@@ -168,6 +200,10 @@ let rec json_expr table env = function
   | MLstring s -> json_dict [
       ("what", json_str "expr:string");
       ("string", json_str (Pstring.to_string s))
+    ]
+  | MLarray64 chunks -> json_dict [
+      ("what", json_str "expr:array64");
+      ("chunks", json_list (List.map (fun t -> json_listarr (Array.map (json_expr table env) t)) chunks))
     ]
   | MLparray(t,def) -> json_dict [
       ("what", json_str "expr:array");

@@ -74,9 +74,16 @@ val type_of_global_in_context : env -> GlobRef.t -> types * UVars.AbstractContex
 (** Types for primitives *)
 
 val type_of_int : env -> types
+val type_of_word8 : env -> types
+val type_of_word16 : env -> types
+val type_of_word32 : env -> types
+val type_of_word64 : env -> types
+val type_of_word128 : env -> types
+val type_of_word256 : env -> types
 val type_of_float : env -> types
 val type_of_string : env -> types
 val type_of_array : env -> UVars.Instance.t -> types
+val type_of_array64 : env -> UVars.Instance.t -> types
 val type_of_prim_type : env -> UVars.Instance.t -> 'a CPrimitives.prim_type -> types
 val type_of_prim : env -> UVars.Instance.t -> CPrimitives.t -> types
 val type_of_prim_or_type : env -> UVars.Instance.t -> CPrimitives.op_or_type -> types

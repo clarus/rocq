@@ -617,6 +617,12 @@ type pretyper = {
   pretype_genarg : pretyper -> GenConstr.glb -> unsafe_judgment pretype_fun;
   pretype_cast : pretyper -> glob_constr * cast_kind option * glob_constr -> unsafe_judgment pretype_fun;
   pretype_int : pretyper -> Uint63.t -> unsafe_judgment pretype_fun;
+  pretype_word8 : pretyper -> Primitive_words_runtime.Word8.t -> unsafe_judgment pretype_fun;
+  pretype_word16 : pretyper -> Primitive_words_runtime.Word16.t -> unsafe_judgment pretype_fun;
+  pretype_word32 : pretyper -> Primitive_words_runtime.Word32.t -> unsafe_judgment pretype_fun;
+  pretype_word64 : pretyper -> Primitive_words_runtime.Word64.t -> unsafe_judgment pretype_fun;
+  pretype_word128 : pretyper -> Primitive_words_runtime.Word128.t -> unsafe_judgment pretype_fun;
+  pretype_word256 : pretyper -> Primitive_words_runtime.Word256.t -> unsafe_judgment pretype_fun;
   pretype_float : pretyper -> Float64.t -> unsafe_judgment pretype_fun;
   pretype_string : pretyper -> Pstring.t -> unsafe_judgment pretype_fun;
   pretype_array : pretyper -> glob_instance option * glob_constr array * glob_constr * glob_constr -> unsafe_judgment pretype_fun;
@@ -663,6 +669,13 @@ let eval_pretyper self ~flags tycon env sigma t =
     self.pretype_cast self (c, k, t) ?loc ~flags tycon env sigma
   | GInt n ->
     self.pretype_int self n ?loc ~flags tycon env sigma
+  | GWord8 n -> self.pretype_word8 self n ?loc ~flags tycon env sigma
+  | GWord16 n -> self.pretype_word16 self n ?loc ~flags tycon env sigma
+  | GWord32 n -> self.pretype_word32 self n ?loc ~flags tycon env sigma
+  | GWord64 n ->
+    self.pretype_word64 self n ?loc ~flags tycon env sigma
+  | GWord128 n -> self.pretype_word128 self n ?loc ~flags tycon env sigma
+  | GWord256 n -> self.pretype_word256 self n ?loc ~flags tycon env sigma
   | GFloat f ->
     self.pretype_float self f ?loc ~flags tycon env sigma
   | GString s ->
@@ -1585,6 +1598,38 @@ let pretype_type self c ?loc ~flags valcon (env : GlobEnv.t) sigma = match DAst.
         in
         discard_trace @@ inh_conv_coerce_to_tycon ?loc ~flags env sigma resj tycon
 
+  let pretype_word64 self i =
+    fun ?loc ~flags tycon env sigma ->
+        let resj =
+          try Typing.judge_of_word64 !!env i
+          with Invalid_argument _ ->
+            user_err ?loc (str "Type of word64 should be registered first.")
+        in
+        discard_trace @@ inh_conv_coerce_to_tycon ?loc ~flags env sigma resj tycon
+
+  let pretype_word128 self i =
+    fun ?loc ~flags tycon env sigma ->
+      discard_trace @@ inh_conv_coerce_to_tycon ?loc ~flags env sigma
+        (Typing.judge_of_word128 !!env i) tycon
+
+  let pretype_word256 self i =
+    fun ?loc ~flags tycon env sigma ->
+      discard_trace @@ inh_conv_coerce_to_tycon ?loc ~flags env sigma
+        (Typing.judge_of_word256 !!env i) tycon
+
+  let pretype_word8 self i =
+    fun ?loc ~flags tycon env sigma ->
+      discard_trace @@ inh_conv_coerce_to_tycon ?loc ~flags env sigma
+        (Typing.judge_of_word8 !!env i) tycon
+  let pretype_word16 self i =
+    fun ?loc ~flags tycon env sigma ->
+      discard_trace @@ inh_conv_coerce_to_tycon ?loc ~flags env sigma
+        (Typing.judge_of_word16 !!env i) tycon
+  let pretype_word32 self i =
+    fun ?loc ~flags tycon env sigma ->
+      discard_trace @@ inh_conv_coerce_to_tycon ?loc ~flags env sigma
+        (Typing.judge_of_word32 !!env i) tycon
+
   let pretype_float self f =
     fun ?loc ~flags tycon env sigma ->
       let resj =
@@ -1672,6 +1717,12 @@ let default_pretyper =
     pretype_genarg = pretype_genarg;
     pretype_cast = pretype_cast;
     pretype_int = pretype_int;
+    pretype_word8 = pretype_word8;
+    pretype_word16 = pretype_word16;
+    pretype_word32 = pretype_word32;
+    pretype_word64 = pretype_word64;
+    pretype_word128 = pretype_word128;
+    pretype_word256 = pretype_word256;
     pretype_float = pretype_float;
     pretype_string = pretype_string;
     pretype_array = pretype_array;

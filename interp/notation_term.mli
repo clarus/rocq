@@ -45,6 +45,12 @@ type notation_constr =
   | NSort of glob_sort
   | NCast of notation_constr * Constr.cast_kind option * notation_constr
   | NInt of Uint63.t
+  | NWord8 of Primitive_words_runtime.Word8.t
+  | NWord16 of Primitive_words_runtime.Word16.t
+  | NWord32 of Primitive_words_runtime.Word32.t
+  | NWord64 of Primitive_words_runtime.Word64.t
+  | NWord128 of Primitive_words_runtime.Word128.t
+  | NWord256 of Primitive_words_runtime.Word256.t
   | NFloat of Float64.t
   | NString of Pstring.t
   | NArray of notation_constr array * notation_constr * notation_constr

@@ -212,9 +212,16 @@ let rec nf_val env sigma v typ =
       mkLambda(name,dom,body)
   | Vconst n -> construct_of_constr_const env sigma n typ
   | Vint64 i -> i |> Uint63.of_int64 |> mkInt
+  | Vword8 _ | Vword16 _ | Vword32 _ ->
+    CErrors.user_err Pp.(str "Rocq native evaluation of primitive words is unsupported; use vm_compute")
+  | Vword64 i -> mkWord64 i
+  | Vword128 i -> mkWord128 i
+  | Vword256 i -> mkWord256 i
   | Vfloat64 f -> f |> Float64.of_float |> mkFloat
   | Vstring s -> s |> mkString
   | Varray t -> nf_array env sigma t typ
+  | Varray64 _ ->
+    CErrors.user_err Pp.(str "Native evaluation of Array64 is unsupported; use vm_compute")
   | Vblock b ->
       let capp,ctyp = construct_of_constr_block env sigma (block_tag b) typ in
       let args = nf_bargs env sigma b ctyp in

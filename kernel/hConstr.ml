@@ -282,9 +282,16 @@ let hash_kind = let open Hashset.Combine in function
   | Rel n -> combinesmall 16 n
   | Proj (p,_,c) -> combinesmall 17 (combine (Projection.UserOrd.hash p) c.hash)
   | Int i -> combinesmall 18 (Uint63.hash i)
-  | Float f -> combinesmall 19 (Float64.hash f)
-  | String s -> combinesmall 20 (Pstring.hash s)
-  | Array (u,t,def,ty) -> combinesmall 21 (combine4 (UVars.Instance.hash u) (hash_array hash t) def.hash ty.hash)
+  | Word8 i -> combinesmall 19 (Primitive_words_runtime.Word8.hash i)
+  | Word16 i -> combinesmall 20 (Primitive_words_runtime.Word16.hash i)
+  | Word32 i -> combinesmall 21 (Primitive_words_runtime.Word32.hash i)
+  | Word64 i -> combinesmall 22 (Primitive_words_runtime.Word64.hash i)
+  | Word128 i -> combinesmall 23 (Primitive_words_runtime.Word128.hash i)
+  | Word256 i -> combinesmall 24 (Primitive_words_runtime.Word256.hash i)
+  | Float f -> combinesmall 25 (Float64.hash f)
+  | String s -> combinesmall 26 (Pstring.hash s)
+  | Array64(u,t,ty) -> combinesmall 28 (combine3 (UVars.Instance.hash u) (Array64chunks.fold_left (fun h x -> combine x.hash h) 0 t) ty.hash)
+  | Array (u,t,def,ty) -> combinesmall 27 (combine4 (UVars.Instance.hash u) (hash_array hash t) def.hash ty.hash)
 
 let kind_to_constr = function
   | Rel n -> mkRel n
@@ -312,8 +319,15 @@ let kind_to_constr = function
     mkCoFix (ln,(lna,Array.map self tl,Array.map self bl))
   | Proj (p,r,c) -> mkProj (p,r,c.self)
   | Int i -> mkInt i
+  | Word8 i -> mkWord8 i
+  | Word16 i -> mkWord16 i
+  | Word32 i -> mkWord32 i
+  | Word64 i -> mkWord64 i
+  | Word128 i -> mkWord128 i
+  | Word256 i -> mkWord256 i
   | Float f -> mkFloat f
   | String s -> mkString s
+  | Array64(u,t,ty) -> mkArray64(u,Array64chunks.map self t,ty.self)
   | Array (u,t,def,ty) -> mkArray (u,Array.map self t,def.self,ty.self)
 
 let of_kind_nohashcons = function
@@ -453,8 +467,17 @@ and of_constr_aux henv c =
     let c = of_constr henv c in
     Proj (p,r,c)
   | Int _ as t -> t
+  | Word8 _ as t -> t
+  | Word16 _ as t -> t
+  | Word32 _ as t -> t
+  | Word64 _ as t -> t
+  | Word128 _ as t -> t
+  | Word256 _ as t -> t
   | Float _ as t -> t
   | String _ as t -> t
+  | Array64(u,t,ty) ->
+    let _, u = UVars.Instance.hcons u in
+    Array64(u,Array64chunks.map (of_constr henv) t,of_constr henv ty)
   | Array (u,t,def,ty) ->
     let _, u = UVars.Instance.hcons u in
     let t = Array.map (of_constr henv) t in

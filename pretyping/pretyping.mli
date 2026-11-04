@@ -203,6 +203,12 @@ type pretyper = {
   pretype_genarg : pretyper -> GenConstr.glb -> unsafe_judgment pretype_fun;
   pretype_cast : pretyper -> glob_constr * Constr.cast_kind option * glob_constr -> unsafe_judgment pretype_fun;
   pretype_int : pretyper -> Uint63.t -> unsafe_judgment pretype_fun;
+  pretype_word8 : pretyper -> Primitive_words_runtime.Word8.t -> unsafe_judgment pretype_fun;
+  pretype_word16 : pretyper -> Primitive_words_runtime.Word16.t -> unsafe_judgment pretype_fun;
+  pretype_word32 : pretyper -> Primitive_words_runtime.Word32.t -> unsafe_judgment pretype_fun;
+  pretype_word64 : pretyper -> Primitive_words_runtime.Word64.t -> unsafe_judgment pretype_fun;
+  pretype_word128 : pretyper -> Primitive_words_runtime.Word128.t -> unsafe_judgment pretype_fun;
+  pretype_word256 : pretyper -> Primitive_words_runtime.Word256.t -> unsafe_judgment pretype_fun;
   pretype_float : pretyper -> Float64.t -> unsafe_judgment pretype_fun;
   pretype_string : pretyper -> Pstring.t -> unsafe_judgment pretype_fun;
   pretype_array : pretyper -> glob_instance option * glob_constr array * glob_constr * glob_constr -> unsafe_judgment pretype_fun;

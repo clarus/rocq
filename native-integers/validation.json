@@ -1,0 +1,31 @@
+{
+  "check_summary_sha256": "6415a11d813e54c67e6c574c696b50572faa66b0fcf15e647e093766b5d0da5c",
+  "checks": 138,
+  "compiler": "5.5.2",
+  "date": "2026-11-03",
+  "evaluator_witnesses": 60,
+  "existing_regressions": 75,
+  "native_evaluator": "disabled",
+  "object_format": 90348,
+  "optional_gecko_adapters": "not run",
+  "public_oracle_properties_per_engine": 48954,
+  "public_oracle_rows_per_engine": 1299,
+  "status": "passed",
+  "stdlib_revision": "b1c45dfc593b83371bdc996376de5b4ed66c5085",
+  "trust": {
+    "admissions": 0,
+    "law_clauses": 156,
+    "law_constants": 6,
+    "primitive_types": 6,
+    "raw_operations": 120
+  },
+  "wide_oracle_rows_per_engine": 144096,
+  "widths": [
+    8,
+    16,
+    32,
+    64,
+    128,
+    256
+  ]
+}

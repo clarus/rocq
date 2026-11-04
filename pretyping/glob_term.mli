@@ -113,6 +113,12 @@ type 'a glob_constr_r =
   | GCast of 'a glob_constr_g * Constr.cast_kind option * 'a glob_constr_g
   | GProj of (Constant.t * glob_instance option) * 'a glob_constr_g list * 'a glob_constr_g
   | GInt of Uint63.t
+  | GWord8 of Primitive_words_runtime.Word8.t
+  | GWord16 of Primitive_words_runtime.Word16.t
+  | GWord32 of Primitive_words_runtime.Word32.t
+  | GWord64 of Primitive_words_runtime.Word64.t
+  | GWord128 of Primitive_words_runtime.Word128.t
+  | GWord256 of Primitive_words_runtime.Word256.t
   | GFloat of Float64.t
   | GString of Pstring.t
   | GArray of glob_instance option * 'a glob_constr_g array * 'a glob_constr_g * 'a glob_constr_g

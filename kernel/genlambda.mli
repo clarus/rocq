@@ -36,9 +36,16 @@ type 'v node =
 | Lcofix        of int * 'v fix_decl
 | Lint          of int
 | Lparray       of 'v lambda array * 'v lambda
+| Larray64      of 'v lambda array list
 | Lmakeblock    of inductive * int * 'v lambda array
   (* inductive name, constructor tag, arguments *)
 | Luint         of Uint63.t
+| Lword8        of Primitive_words_runtime.Word8.t
+| Lword16       of Primitive_words_runtime.Word16.t
+| Lword32       of Primitive_words_runtime.Word32.t
+| Lword64       of Primitive_words_runtime.Word64.t
+| Lword128      of Primitive_words_runtime.Word128.t
+| Lword256      of Primitive_words_runtime.Word256.t
 | Lfloat        of Float64.t
 | Lstring       of Pstring.t
 | Lval          of 'v

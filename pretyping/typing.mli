@@ -61,6 +61,12 @@ val judge_of_product : Environ.env -> evar_map -> Name.t ->
   unsafe_type_judgment -> unsafe_type_judgment -> unsafe_judgment
 val judge_of_projection : env -> evar_map -> Projection.t -> unsafe_judgment -> unsafe_judgment
 val judge_of_int : Environ.env -> Uint63.t -> unsafe_judgment
+val judge_of_word8 : Environ.env -> Primitive_words_runtime.Word8.t -> unsafe_judgment
+val judge_of_word16 : Environ.env -> Primitive_words_runtime.Word16.t -> unsafe_judgment
+val judge_of_word32 : Environ.env -> Primitive_words_runtime.Word32.t -> unsafe_judgment
+val judge_of_word64 : Environ.env -> Primitive_words_runtime.Word64.t -> unsafe_judgment
+val judge_of_word128 : Environ.env -> Primitive_words_runtime.Word128.t -> unsafe_judgment
+val judge_of_word256 : Environ.env -> Primitive_words_runtime.Word256.t -> unsafe_judgment
 val judge_of_float : Environ.env -> Float64.t -> unsafe_judgment
 val judge_of_string : Environ.env -> Pstring.t -> unsafe_judgment
 

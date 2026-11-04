@@ -223,6 +223,15 @@ let eval_caml_prim = function
 | CAML_Stringsub -> 9, Vmvalues.pstring_sub
 | CAML_Stringcat -> 10, Vmvalues.pstring_cat
 | CAML_Stringcompare -> 11, Vmvalues.pstring_compare
+| CAML_Array64 op ->
+  let index = match op with
+    | CPrimitives.A64empty -> 0 | A64repeat -> 1 | A64length -> 2 | A64get -> 3
+    | A64set -> 4 | A64slice -> 5 | A64replace -> 6 | A64concat -> 7 in
+  132 + index, Vmvalues.array64_prim op
+| CAML_Array64ofchunks -> 140, Vmvalues.array64_ofchunks
+| CAML_Word (width, op) ->
+  12 + CPrimitives.hash (CPrimitives.Word (width, op)) - 62,
+  Vmvalues.word_prim width op
 
 let make_static_prim table =
   let fold table prim =
@@ -231,7 +240,7 @@ let make_static_prim table =
     table, key
   in
   (* Keep synchronized *)
-  let prims = [
+  let fixed_prims = [
     CAML_Arraymake;
     CAML_Arrayget;
     CAML_Arraydefault;
@@ -245,6 +254,17 @@ let make_static_prim table =
     CAML_Stringcat;
     CAML_Stringcompare;
   ] in
+  let open CPrimitives in
+  let widths = [Word8; Word16; Word32; Word64; Word128; Word256] in
+  let ops = [Wneg; Wadd; Wsub; Wmul; Wland; Wlor; Wlxor; Wlnot;
+             Weq; Wltu; Wleu; Wlts; Wles; Wlsl; Wlsr; Wasr;
+             Wdivu; Wmodu; Wdivs; Wrems] in
+  let prims = fixed_prims @
+    List.concat_map (fun width ->
+      List.map (fun op -> CAML_Word (width, op)) ops) widths @
+    List.map (fun op -> CAML_Array64 op)
+      [A64empty; A64repeat; A64length; A64get; A64set; A64slice; A64replace; A64concat] @
+    [CAML_Array64ofchunks] in
   let table, prims = CList.fold_left_map fold table prims in
   table, Array.of_list prims
 

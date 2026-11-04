@@ -119,6 +119,12 @@ end
 type repr =
 | RInt of int
 | Rint64 of Int64.t
+| Rword8 of Int64.t
+| Rword16 of Int64.t
+| Rword32 of Int64.t
+| Rword64 of Int64.t
+| Rword128 of Int64.t * Int64.t
+| Rword256 of Int64.t * Int64.t * Int64.t * Int64.t
 | RFloat64 of float
 | RBlock of (int * int) (* tag × len *)
 | RString of string
@@ -134,6 +140,12 @@ type data =
 type obj =
 | Struct of int * data array (* tag × data *)
 | Int64 of Int64.t (* Primitive integer *)
+| Word8 of Int64.t
+| Word16 of Int64.t
+| Word32 of Int64.t
+| Word64 of Int64.t (* Primitive word64 payload *)
+| Word128 of Int64.t * Int64.t
+| Word256 of Int64.t * Int64.t * Int64.t * Int64.t
 | Float64 of float (* Primitive float *)
 | String of string
 
@@ -358,7 +370,23 @@ let parse_object chan =
   | CODE_CUSTOM_FIXED ->
     begin match input_cstring chan with
     | "_j" -> Rint64 (input_intL chan)
-    | s -> Printf.eprintf "Unhandled custom code: %s" s; assert false
+    | "_gecko_primitive_words_word8_v1" -> Rword8 (Int64.of_int (input_byte chan))
+    | "_gecko_primitive_words_word16_v1" -> Rword16 (Int64.of_int (input_int16u chan))
+    | "_gecko_primitive_words_word32_v1" -> Rword32 (Int64.of_int (input_int32u chan))
+    | "_gecko_primitive_words_word64_v1" -> Rword64 (input_intL chan)
+    | "_gecko_primitive_words_word128_v1" ->
+      (* Input order is semantic here; do not rely on OCaml tuple-argument
+         evaluation order when consuming the serialized byte stream. *)
+      let high = input_intL chan in
+      let low = input_intL chan in
+      Rword128 (high, low)
+    | "_gecko_primitive_words_word256_v1" ->
+      let limb3 = input_intL chan in
+      let limb2 = input_intL chan in
+      let limb1 = input_intL chan in
+      let limb0 = input_intL chan in
+      Rword256 (limb3, limb2, limb1, limb0)
+    | s -> failwith (Printf.sprintf "unsupported custom block identifier %s" s)
     end
   | CODE_DOUBLE_BIG ->
     RFloat64 (input_double_big chan)
@@ -411,6 +439,31 @@ let parse chan =
     let () = LargeArray.set memory !current_object (Int64 i) in
     let () = incr current_object in
     data, None
+  | Rword64 i ->
+    let data = Ptr !current_object in
+    let () = LargeArray.set memory !current_object (Word64 i) in
+    let () = incr current_object in
+    data, None
+  | Rword128 (high, low) ->
+    let data = Ptr !current_object in
+    let () = LargeArray.set memory !current_object (Word128 (low, high)) in
+    incr current_object; data, None
+  | Rword256 (limb3, limb2, limb1, limb0) ->
+    let data = Ptr !current_object in
+    let () = LargeArray.set memory !current_object (Word256 (limb0, limb1, limb2, limb3)) in
+    incr current_object; data, None
+  | Rword8 i ->
+    let data = Ptr !current_object in
+    let () = LargeArray.set memory !current_object (Word8 i) in
+    incr current_object; data, None
+  | Rword16 i ->
+    let data = Ptr !current_object in
+    let () = LargeArray.set memory !current_object (Word16 i) in
+    incr current_object; data, None
+  | Rword32 i ->
+    let data = Ptr !current_object in
+    let () = LargeArray.set memory !current_object (Word32 i) in
+    incr current_object; data, None
   | RFloat64 f ->
     let data = Ptr !current_object in
     let () = LargeArray.set memory !current_object (Float64 f) in
@@ -485,6 +538,14 @@ let instantiate (p, mem) =
     let obj = match LargeArray.get mem i with
     | Struct (tag, blk) -> Obj.new_block tag (Array.length blk)
     | Int64 i -> Obj.repr i
+    | Word8 i -> Obj.repr (Primitive_words_runtime.Word8.of_int (Int64.to_int i))
+    | Word16 i -> Obj.repr (Primitive_words_runtime.Word16.of_int (Int64.to_int i))
+    | Word32 i -> Obj.repr (Primitive_words_runtime.Word32.of_int32 (Int64.to_int32 i))
+    | Word64 i -> Obj.repr (Primitive_words_runtime.Word64.of_int64 i)
+    | Word128 (low, high) ->
+      Obj.repr (Primitive_words_runtime.Word128.of_limbs ~low ~high)
+    | Word256 (limb0, limb1, limb2, limb3) ->
+      Obj.repr (Primitive_words_runtime.Word256.of_limbs ~limb0 ~limb1 ~limb2 ~limb3)
     | Float64 f -> Obj.repr f
     | String str -> Obj.repr str
     in
@@ -505,6 +566,7 @@ let instantiate (p, mem) =
         Obj.set_field obj k (get_data blk.(k))
       done
     | Int64 _
+    | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _
     | Float64 _
     | String _ -> ()
   done;

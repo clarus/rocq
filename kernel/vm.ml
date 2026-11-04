@@ -163,7 +163,8 @@ let rec apply_stack a stk v =
 let apply_whd k whd =
   let v = val_of_rel k in
   match whd with
-  | Vprod _ | Vconst _ | Vblock _ | Vint64 _ | Vfloat64 _ | Vstring _ | Varray _ ->
+  | Vprod _ | Vconst _ | Vblock _ | Vint64 _ | Vword8 _ | Vword16 _ | Vword32 _ | Vword64 _ | Vword128 _ | Vword256 _
+  | Vfloat64 _ | Vstring _ | Varray _ | Varray64 _ ->
      assert false
   | Vfun f -> reduce_fun k f
   | Vfix(f, None) ->
@@ -181,4 +182,3 @@ let apply_whd k whd =
       interprete (cofix_upd_code to_up) (cofix_upd_val to_up) (cofix_upd_env to_up) 0
   | Vaccu (a, stk) ->
       apply_stack (val_of_atom a) stk v
-

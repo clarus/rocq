@@ -8,6 +8,19 @@
 (*         *     (see LICENSE file for the text of the license)         *)
 (************************************************************************)
 
+type word_width = Word8 | Word16 | Word32 | Word64 | Word128 | Word256
+
+type word_op =
+  | Wneg | Wadd | Wsub | Wmul
+  | Wland | Wlor | Wlxor | Wlnot
+  | Weq | Wltu | Wleu | Wlts | Wles
+  | Wlsl | Wlsr | Wasr
+  | Wdivu | Wmodu | Wdivs | Wrems
+
+type array64_op =
+  | A64empty | A64repeat | A64length | A64get
+  | A64set | A64slice | A64replace | A64concat
+
 type t =
   | Int63head0
   | Int63tail0
@@ -39,6 +52,7 @@ type t =
   | Int63les
   | Int63compare
   | Int63compares
+  | Word of word_width * word_op
   | Float64opp
   | Float64abs
   | Float64eq
@@ -70,6 +84,7 @@ type t =
   | Stringsub
   | Stringcat
   | Stringcompare
+  | Array64 of array64_op
 
 (** Can raise [Not_found].
     Beware that this is not exactly the reverse of [to_string] below. *)
@@ -92,6 +107,8 @@ val hash : t -> int
 
 val to_string : t -> string
 
+val array64_op_to_string : array64_op -> string
+
 val arity : t -> int
 (** Including parameters *)
 
@@ -104,14 +121,22 @@ val kind : t -> args_red
 
 type 'a prim_type =
   | PT_int63 : unit prim_type
+  | PT_word8 : unit prim_type
+  | PT_word16 : unit prim_type
+  | PT_word32 : unit prim_type
+  | PT_word64 : unit prim_type
+  | PT_word128 : unit prim_type
+  | PT_word256 : unit prim_type
   | PT_float64 : unit prim_type
   | PT_string : unit prim_type
   | PT_array : (UVars.Instance.t * ind_or_type) prim_type
+  | PT_array64 : (UVars.Instance.t * ind_or_type) prim_type
 
 and 'a prim_ind =
   | PIT_bool : unit prim_ind
   | PIT_carry : ind_or_type prim_ind
   | PIT_pair : (ind_or_type * ind_or_type) prim_ind
+  | PIT_option : ind_or_type prim_ind
   | PIT_cmp : unit prim_ind
   | PIT_f_cmp : unit prim_ind
   | PIT_f_class : unit prim_ind

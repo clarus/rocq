@@ -546,6 +546,7 @@ let rec get_alias env kn =
 (* Some primitives are not implemented natively by the VM, but calling OCaml
    code instead *)
 let get_caml_prim = let open CPrimitives in function
+  | CPrimitives.Array64 op -> Some (CAML_Array64 op)
   | Arraymake -> Some CAML_Arraymake
   | Arrayget -> Some CAML_Arrayget
   | Arraydefault -> Some CAML_Arraydefault
@@ -558,6 +559,7 @@ let get_caml_prim = let open CPrimitives in function
   | Stringsub -> Some CAML_Stringsub
   | Stringcat -> Some CAML_Stringcat
   | Stringcompare -> Some CAML_Stringcompare
+  | Word (width, op) -> Some (CAML_Word (width, op))
   | _ -> None
 
 (* sz is the size of the local stack *)
@@ -571,6 +573,15 @@ let rec compile_lam env cenv lam sz cont =
   | Lval v -> compile_structured_constant cenv (Const_val (get_lval v)) sz cont
 
   | Luint i -> compile_structured_constant cenv (Const_uint i) sz cont
+
+  | Lword8 i -> compile_structured_constant cenv (Const_word8 i) sz cont
+  | Lword16 i -> compile_structured_constant cenv (Const_word16 i) sz cont
+  | Lword32 i -> compile_structured_constant cenv (Const_word32 i) sz cont
+  | Lword64 i -> compile_structured_constant cenv (Const_word64 i) sz cont
+
+  | Lword128 i -> compile_structured_constant cenv (Const_word128 i) sz cont
+
+  | Lword256 i -> compile_structured_constant cenv (Const_word256 i) sz cont
 
   | Lfloat f -> compile_structured_constant cenv (Const_float f) sz cont
 
@@ -802,6 +813,22 @@ let rec compile_lam env cenv lam sz cont =
     if Int.equal arity 0 then cont
     else comp_args (compile_lam env) cenv args sz cont
 
+  | Larray64 [] ->
+    compile_structured_constant cenv (Const_val array64_empty) sz cont
+
+  | Larray64 chunks ->
+    let lbl = Label.create () in
+    let cont = Klabel lbl :: Kcamlprim (CAML_Array64ofchunks, lbl) :: cont in
+    (* Build the chunk list without a lambda nested once per chunk. This keeps
+       compilation stack usage bounded even for very large array literals. *)
+    let cont = List.fold_left (fun cont chunk ->
+      let arity = Array.length chunk in
+      assert (arity > 0);
+      let cont = code_makeblock cenv ~stack_size:(sz + arity) ~arity ~tag:0
+        (Kmakeblock (2, 0) :: cont) in
+      Kpush :: comp_args (compile_lam env) cenv chunk (sz + 1) cont) cont chunks in
+    compile_structured_constant cenv (Const_b0 0) sz cont
+
   | Lparray (args, def) ->
     let v, cont = match as_value 0 args with
     | None ->
@@ -816,6 +843,9 @@ let rec compile_lam env cenv lam sz cont =
       v, Klabel lbl :: Kcamlprim (CAML_Arraycopy, lbl) :: cont
     in
     compile_lam env cenv v sz cont
+
+  | Lprim (_, CPrimitives.Array64 A64empty, _) ->
+    compile_structured_constant cenv (Const_val array64_empty) sz cont
 
   | Lprim (kn, op, args) ->
 

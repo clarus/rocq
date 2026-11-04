@@ -468,7 +468,7 @@ let rec build_entry_lc env sigma funnames avoid rt :
   observe (str " Entering : " ++ pr_glob_constr_env env rt);
   let open CAst in
   match DAst.get rt with
-  | GRef _ | GVar _ | GEvar _ | GPatVar _ | GSort _ | GHole _ | GGenarg _ | GInt _
+  | GRef _ | GVar _ | GEvar _ | GPatVar _ | GSort _ | GHole _ | GGenarg _ | GInt _ | GWord8 _ | GWord16 _ | GWord32 _ | GWord64 _ | GWord128 _ | GWord256 _
    |GFloat _ | GString _ ->
     (* do nothing (except changing type of course) *)
     mk_result [] rt avoid
@@ -575,6 +575,7 @@ let rec build_entry_lc env sigma funnames avoid rt :
     | GRec _ -> user_err Pp.(str "Not handled GRec")
     | GProd _ -> user_err Pp.(str "Cannot apply a type")
     | GInt _ -> user_err Pp.(str "Cannot apply an integer")
+    | GWord8 _ | GWord16 _ | GWord32 _ | GWord64 _ | GWord128 _ | GWord256 _ -> user_err Pp.(str "Cannot apply a word64")
     | GFloat _ -> user_err Pp.(str "Cannot apply a float")
     | GString _ -> user_err Pp.(str "Cannot apply a string")
     | GArray _ -> user_err Pp.(str "Cannot apply an array")
@@ -1208,7 +1209,7 @@ let rec compute_cst_params relnames params gt =
   DAst.with_val
     (function
       | GRef _ | GVar _ | GEvar _ | GPatVar _
-      | GInt _ | GFloat _ | GString _ -> params
+      | GInt _ | GWord8 _ | GWord16 _ | GWord32 _ | GWord64 _ | GWord128 _ | GWord256 _ | GFloat _ | GString _ -> params
       | GApp (f, args) -> (
         match DAst.get f with
         | GVar relname' when Id.Set.mem relname' relnames ->

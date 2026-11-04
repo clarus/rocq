@@ -882,7 +882,7 @@ let rec adjust_env env = function
   | NCast (c,_,_) -> adjust_env env c
   | NApp _ -> restart_no_binders env
   | NVar _ | NRef _ | NHole _ | NGenarg _ | NCases _ | NLetTuple _ | NIf _
-  | NRec _ | NSort _ | NProj _ | NInt _ | NFloat _ | NString _ | NArray _
+  | NRec _ | NSort _ | NProj _ | NInt _ | NWord8 _ | NWord16 _ | NWord32 _ | NWord64 _ | NWord128 _ | NWord256 _ | NFloat _ | NString _ | NArray _
   | NList _ | NBinderList _ -> env (* to be safe, but restart should be ok *)
 
 let subst_var loc intern_pat intern ntnvars binders (terms, binderopt, _terminopt) (renaming, env) id =

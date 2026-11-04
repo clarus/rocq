@@ -760,9 +760,7 @@ end
 (* Exported utilities for positivity *)
 
 let is_primitive_positive_container env c =
-  match (Environ.retroknowledge env).Retroknowledge.retro_array with
-  | Some c' when QConstant.equal env c c' -> true
-  | _ -> false
+  Environ.is_array_type env c || Environ.is_array64_type env c
 
 (* This removes global parameters of the inductive types in lc (for
    nested inductive types only ) *)
@@ -1345,8 +1343,8 @@ let rec subterm_specif ?evars renv stack t =
     | Meta _ -> assert false
 
     | Var _ | Sort _ | Cast _ | Prod _ | LetIn _ | App _ | Ind _
-      | Construct _ | CoFix _ | Int _ | Float _ | String _
-      | Array _ -> Subterm.not_subterm
+      | Construct _ | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _
+      | Array _ | Array64 _ -> Subterm.not_subterm
 
 
       (* Other terms are not subterms *)
@@ -1586,7 +1584,7 @@ let check_one_fix ?evars renv recpos trees def =
               match kind hd with
               | Construct cstr -> Some (apply_branch cstr (Array.to_list args) ci brs, [])
               | CoFix _ | Ind _ | Lambda _ | Prod _ | LetIn _
-              | Sort _ | Int _ | Float _ | String _ | Array _ -> assert false
+              | Sort _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> assert false
               | Rel _ | Var _ | Const _ | App _ | Case _ | Fix _
               | Proj _ | Cast _ | Meta _ | Evar _ -> None)
 
@@ -1637,8 +1635,8 @@ let check_one_fix ?evars renv recpos trees def =
               match kind hd with
               | Construct _ -> Some (contract_fix fix, absorbed_stack)
               | CoFix _ | Ind _ | Lambda _ | Prod _ | LetIn _
-              | Sort _ | Int _ | Float _ | String _
-              | Array _ -> assert false
+              | Sort _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _
+              | Array _ | Array64 _ -> assert false
               | Rel _ | Var _ | Const _ | App _ | Case _ | Fix _
               | Proj _ | Cast _ | Meta _ | Evar _ -> None)
 
@@ -1687,7 +1685,7 @@ let check_one_fix ?evars renv recpos trees def =
               match kind hd with
               | Construct _ -> Some (args.(Projection.npars p + Projection.arg p), [])
               | CoFix _ | Ind _ | Lambda _ | Prod _ | LetIn _
-              | Sort _ | Int _ | Float _ | String _ | Array _ -> assert false
+              | Sort _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> assert false
               | Rel _ | Var _ | Const _ | App _ | Case _ | Fix _
               | Proj _ | Cast _ | Meta _ | Evar _ -> None)
             end
@@ -1717,10 +1715,13 @@ let check_one_fix ?evars renv recpos trees def =
             let rs = check_rec_call_stack renv stack rs c in
             rs
 
-        | Sort _ | Int _ | Float _ | String _ ->
+        | Sort _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ ->
             (* See [Prod]: we cannot ensure that the stack is empty *)
             rs
 
+        | Array64 (_u,t,ty) ->
+            let rs = Array64chunks.fold_left (check_inert_subterm_rec_call renv) rs t in
+            check_inert_subterm_rec_call renv rs ty
         | Array (_u,t,def,ty) ->
             (* See [Prod]: we cannot ensure that the stack is empty *)
             let rs = Array.fold_left (check_inert_subterm_rec_call renv) rs t in
@@ -1985,8 +1986,8 @@ let check_one_cofix ?evars env nbfix def deftype =
         | Evar _ ->
             List.iter (check_rec_call env alreadygrd n tree) args
         | Rel _ | Var _ | Sort _ | Cast _ | Prod _ | LetIn _ | App _ | Const _
-          | Ind _ | Fix _ | Proj _ | Int _ | Float _ | String _
-          | Array _ ->
+          | Ind _ | Fix _ | Proj _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _
+          | Array _ | Array64 _ ->
            raise (CoFixGuardError (env,NotGuardedForm t)) in
 
   let ((mind, _),_) = codomain_is_coind ?evars env deftype in

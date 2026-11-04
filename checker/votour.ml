@@ -125,6 +125,7 @@ struct
         in
         fold 0 1 (fun size -> let () = LargeArray.set !sizes p size in k size)
       | Int64 _ -> k 0
+      | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> k 0
       | Float64 _ -> k 0
       | String s ->
         let size = 2 + (String.length s / ws) in
@@ -143,6 +144,7 @@ struct
     match LargeArray.get !memory p with
     | Struct (tag, os) -> BLOCK (tag, os)
     | Int64 _ -> OTHER (* TODO: pretty-print int63 values *)
+    | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ -> OTHER (* TODO: pretty-print primitive word64 values *)
     | Float64 _ -> OTHER (* TODO: pretty-print float64 values *)
     | String s -> STRING s
 
@@ -180,6 +182,12 @@ let rec get_name ?(extra=false) v = match kind v with
   |String -> "string"
   |Annot (s,v) -> s^"/"^get_name ~extra v
   | Int64 -> "Int64"
+  | Word8 -> "Word8"
+  | Word16 -> "Word16"
+  | Word32 -> "Word32"
+  | Word64 -> "Word64"
+  | Word128 -> "Word128"
+  | Word256 -> "Word256"
   | Float64 -> "Float64"
 
 (** For tuples, its quite handy to display the inner 1st string (if any).
@@ -278,6 +286,8 @@ let rec get_children v o pos = match kind v with
   |Any -> raise_notrace Exit
   | Fail s -> raise Forbidden
   | Int64 -> raise_notrace Exit
+  | Word8 | Word16 | Word32 -> raise_notrace Exit
+  | Word64 | Word128 | Word256 -> raise_notrace Exit
   | Float64 -> raise_notrace Exit
 
 let get_children v o pos =

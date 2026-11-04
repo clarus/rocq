@@ -37,7 +37,7 @@ let eq_reloc_info r1 r2 = match r1, r2 with
 | Reloc_const _, _ -> false
 | Reloc_getglobal c1, Reloc_getglobal c2 -> Constant.UserOrd.equal c1 c2
 | Reloc_getglobal _, _ -> false
-| Reloc_caml_prim p1, Reloc_caml_prim p2 -> CPrimitives.equal (caml_prim_to_prim p1) (caml_prim_to_prim p2)
+| Reloc_caml_prim p1, Reloc_caml_prim p2 -> equal_caml_prim p1 p2
 | Reloc_caml_prim _, _ -> false
 
 let hash_reloc_info r =
@@ -46,7 +46,7 @@ let hash_reloc_info r =
   | Reloc_annot sw -> combinesmall 1 (hash_annot_switch sw)
   | Reloc_const c -> combinesmall 2 (hash_structured_constant c)
   | Reloc_getglobal c -> combinesmall 3 (Constant.UserOrd.hash c)
-  | Reloc_caml_prim p -> combinesmall 4 (CPrimitives.hash (caml_prim_to_prim p))
+  | Reloc_caml_prim p -> combinesmall 4 (hash_caml_prim p)
 
 module RelocTable = Hashtbl.Make(struct
   type t = reloc_info
@@ -125,6 +125,12 @@ type t =
 | SReloc_Const_univ_instance of UVars.Instance.t
 | SReloc_Const_val of structured_values
 | SReloc_Const_uint of Uint63.t
+| SReloc_Const_word8 of Primitive_words_runtime.Word8.t
+| SReloc_Const_word16 of Primitive_words_runtime.Word16.t
+| SReloc_Const_word32 of Primitive_words_runtime.Word32.t
+| SReloc_Const_word64 of Primitive_words_runtime.Word64.t
+| SReloc_Const_word128 of Primitive_words_runtime.Word128.t
+| SReloc_Const_word256 of Primitive_words_runtime.Word256.t
 | SReloc_Const_float of Float64.t
 | SReloc_Const_string of Pstring.t
 | SReloc_annot of annot_switch
@@ -137,6 +143,12 @@ let to_reloc = function
 | SReloc_Const_univ_instance u -> Reloc_const (Const_univ_instance u)
 | SReloc_Const_val v -> Reloc_const (Const_val v)
 | SReloc_Const_uint i -> Reloc_const (Const_uint i)
+| SReloc_Const_word8 i -> Reloc_const (Const_word8 i)
+| SReloc_Const_word16 i -> Reloc_const (Const_word16 i)
+| SReloc_Const_word32 i -> Reloc_const (Const_word32 i)
+| SReloc_Const_word64 i -> Reloc_const (Const_word64 i)
+| SReloc_Const_word128 i -> Reloc_const (Const_word128 i)
+| SReloc_Const_word256 i -> Reloc_const (Const_word256 i)
 | SReloc_Const_float f -> Reloc_const (Const_float f)
 | SReloc_Const_string s -> Reloc_const (Const_string s)
 | SReloc_annot annot -> Reloc_annot annot
@@ -427,11 +439,19 @@ let check_prim_op = function
   | Float64ldshiftexp -> opCHECKLDSHIFTEXP
   | Float64next_up    -> opCHECKNEXTUPFLOAT
   | Float64next_down  -> opCHECKNEXTDOWNFLOAT
+  | Word _ | Array64 _ ->
+    assert false
   | Arraymake | Arrayget | Arrayset | Arraydefault | Arraycopy | Arraylength
   | Stringmake | Stringlength | Stringget | Stringsub | Stringcat | Stringcompare
     -> assert false
 
 let check_caml_prim_op = function
+| CAML_Array64 A64empty -> assert false
+| CAML_Array64 A64repeat -> opCHECKCAMLCALL2_1
+| CAML_Array64 A64length | CAML_Array64ofchunks -> opCHECKCAMLCALL1
+| CAML_Array64 (A64get | A64concat) -> opCHECKCAMLCALL2
+| CAML_Array64 A64set -> opCHECKCAMLCALL3_1
+| CAML_Array64 (A64slice | A64replace) -> opCHECKCAMLCALL3
 | CAML_Arraymake -> opCHECKCAMLCALL2_1
 | CAML_Arrayget -> opCHECKCAMLCALL2
 | CAML_Arrayset -> opCHECKCAMLCALL3_1
@@ -441,6 +461,8 @@ let check_caml_prim_op = function
 | CAML_Stringget -> opCHECKCAMLCALL2
 | CAML_Stringsub -> opCHECKCAMLCALL3
 | CAML_Stringcat | CAML_Stringcompare -> opCHECKCAMLCALL2
+| CAML_Word (_, (Wneg | Wlnot)) -> opCHECKCAMLCALL1
+| CAML_Word _ -> opCHECKCAMLCALL2
 
 let inplace_prim_op = function
   | Float64next_up | Float64next_down -> true
@@ -678,6 +700,12 @@ let to_memory fv code =
     | Reloc_const (Const_univ_instance u) -> push (SReloc_Const_univ_instance u)
     | Reloc_const (Const_val v) -> push (SReloc_Const_val v)
     | Reloc_const (Const_uint i) -> push (SReloc_Const_uint i)
+    | Reloc_const (Const_word8 i) -> push (SReloc_Const_word8 i)
+    | Reloc_const (Const_word16 i) -> push (SReloc_Const_word16 i)
+    | Reloc_const (Const_word32 i) -> push (SReloc_Const_word32 i)
+    | Reloc_const (Const_word64 i) -> push (SReloc_Const_word64 i)
+    | Reloc_const (Const_word128 i) -> push (SReloc_Const_word128 i)
+    | Reloc_const (Const_word256 i) -> push (SReloc_Const_word256 i)
     | Reloc_const (Const_float f) -> push (SReloc_Const_float f)
     | Reloc_const (Const_string s) -> push (SReloc_Const_string s)
   in

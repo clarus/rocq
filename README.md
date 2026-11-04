@@ -25,6 +25,10 @@ The Rocq Prover is an interactive theorem prover, or proof assistant. It provide
 mathematical definitions, executable algorithms and theorems together with an
 environment for semi-interactive development of machine-checked proofs.
 
+This fork adds native 8-, 16-, 32-, 64-, 128-, and 256-bit integers, built with
+OCaml. See [the native integer guide](native-integers/README.md) for the full
+API, local build/check commands, and supported evaluators.
+
 ## Installation
 
 [![latest packaged version(s)][repology-badge]][repology-link]

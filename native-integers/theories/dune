@@ -1,0 +1,4 @@
+(rocq.theory
+ (name Rocq.PrimitiveWords)
+ (package rocq-primitive-words)
+ (theories Corelib Stdlib))

@@ -591,13 +591,22 @@ let print_constant env ~with_values with_implicit cst udecl =
   let is_axiom, ppdata, priv = match cb.const_body with
     | Undef _ ->
       let ex p = CPrimitives.PTE p in
-      let prims = CPrimitives.[ex PT_int63; ex PT_float64; ex PT_string; ex PT_array] in
+      let prims = CPrimitives.[ex PT_int63; ex PT_word8; ex PT_word16; ex PT_word32;
+        ex PT_word64; ex PT_word128; ex PT_word256; ex PT_float64; ex PT_string;
+        ex PT_array; ex PT_array64] in
       let is_prim (CPrimitives.PTE p) =
         let test = match p with
         | PT_int63 -> Environ.is_int63_type
+        | PT_word8 -> Environ.is_word8_type
+        | PT_word16 -> Environ.is_word16_type
+        | PT_word32 -> Environ.is_word32_type
+        | PT_word64 -> Environ.is_word64_type
+        | PT_word128 -> Environ.is_word128_type
+        | PT_word256 -> Environ.is_word256_type
         | PT_float64 -> Environ.is_float64_type
         | PT_string -> Environ.is_string_type
         | PT_array -> Environ.is_array_type
+        | PT_array64 -> Environ.is_array64_type
         in
         if test env cst then Some (CPrimitives.prim_type_to_string p)
         else None

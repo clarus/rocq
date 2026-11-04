@@ -240,7 +240,7 @@ let conv_table_key infos ~nargs k1 k2 cuniv =
   match k1, k2 with
   | ConstKey (cst, u), ConstKey (cst', u') when Constant.CanOrd.equal cst cst' ->
     if UVars.Instance.equal u u' then cuniv
-    else if Int.equal nargs 1 && is_array_type (info_env infos.cnv_inf) cst then cuniv
+    else if Int.equal nargs 1 && (is_array_type (info_env infos.cnv_inf) cst || is_array64_type (info_env infos.cnv_inf) cst) then cuniv
     else
       let flex = evaluable_constant cst (info_env infos.cnv_inf)
         && RedFlags.red_set (info_flags infos.cnv_inf) (RedFlags.fCONST cst)
@@ -317,6 +317,12 @@ let rec compare_under e1 c1 e2 c2 =
   | Meta m1, Meta m2 -> Int.equal m1 m2
   | Var id1, Var id2 -> Id.equal id1 id2
   | Int i1, Int i2 -> Uint63.equal i1 i2
+  | Word8 i1, Word8 i2 -> Primitive_words_runtime.Word8.equal i1 i2
+  | Word16 i1, Word16 i2 -> Primitive_words_runtime.Word16.equal i1 i2
+  | Word32 i1, Word32 i2 -> Primitive_words_runtime.Word32.equal i1 i2
+  | Word64 i1, Word64 i2 -> Primitive_words_runtime.Word64.equal i1 i2
+  | Word128 i1, Word128 i2 -> Primitive_words_runtime.Word128.equal i1 i2
+  | Word256 i1, Word256 i2 -> Primitive_words_runtime.Word256.equal i1 i2
   | Float f1, Float f2 -> Float64.equal f1 f2
   | String s1, String s2 -> Pstring.equal s1 s2
   | Sort s1, Sort s2 ->
@@ -351,13 +357,17 @@ let rec compare_under e1 c1 e2 c2 =
   | Construct (c1,u1), Construct (c2,u2) ->
     Construct.UserOrd.equal c1 c2 && eq_universes e1 e2 u1 u2
   | Case _, Case _ | Fix _, Fix _ | CoFix _, CoFix _ -> false (* todo some other time *)
+  | Array64(u1,t1,ty1), Array64(u2,t2,ty2) ->
+    eq_universes e1 e2 u1 u2 &&
+    Array64chunks.equal_norefl (fun c1 c2 -> compare_under e1 c1 e2 c2) t1 t2 &&
+    compare_under e1 ty1 e2 ty2
   | Array(_,t1,def1,ty1), Array(_,t2,def2,ty2) ->
     Array.equal_norefl (fun c1 c2 -> compare_under e1 c1 e2 c2) t1 t2
     && compare_under e1 def1 e2 def2
     && compare_under e1 ty1 e2 ty2
   | (Rel _ | Meta _ | Var _ | Sort _ | Prod _ | Lambda _ | LetIn _ | App _
     | Proj _ | Evar _ | Const _ | Ind _ | Construct _ | Case _ | Fix _
-    | CoFix _ | Int _ | Float _ | String _ | Array _), _ -> false
+    | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _), _ -> false
 
 
 let rec fast_test lft1 term1 lft2 term2 = match fterm_of term1, fterm_of term2 with
@@ -742,6 +752,36 @@ and eqwhnf cv_pb l2r infos (lft1, (hd1, v1) as appr1) (lft2, (hd2, v2) as appr2)
        if Uint63.equal i1 i2 then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
        else raise NotConvertible
 
+    | FWord8 i1, FWord8 i2 ->
+       if Primitive_words_runtime.Word8.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
+    | FWord16 i1, FWord16 i2 ->
+       if Primitive_words_runtime.Word16.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
+    | FWord32 i1, FWord32 i2 ->
+       if Primitive_words_runtime.Word32.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
+    | FWord64 i1, FWord64 i2 ->
+       if Primitive_words_runtime.Word64.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
+    | FWord128 i1, FWord128 i2 ->
+       if Primitive_words_runtime.Word128.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
+    | FWord256 i1, FWord256 i2 ->
+       if Primitive_words_runtime.Word256.equal i1 i2
+       then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+       else raise NotConvertible
+
     | FFloat f1, FFloat f2 ->
         if Float64.equal f1 f2 then convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
         else raise NotConvertible
@@ -774,6 +814,15 @@ and eqwhnf cv_pb l2r infos (lft1, (hd1, v1) as appr1) (lft2, (hd2, v2) as appr2)
          equivalent when used to instantiate this inductive's
          components, but we may as well *)
       let cuniv = convert_branches mind mip l2r infos e1 e2 el1 el2 u1 u2 pms1 pms2 br1 br2 cuniv in
+      convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
+
+    | FArray64 (u1,t1,ty1), FArray64 (u2,t2,ty2) ->
+      if not (Primitive_words_runtime.Word64.equal (Parray64.length t1) (Parray64.length t2)) then raise NotConvertible;
+      let cuniv = fail_check infos @@ convert_instances_cumul CONV [|UVars.Variance.Irrelevant|] u1 u2 cuniv in
+      let el1 = el_stack lft1 v1 in
+      let el2 = el_stack lft2 v2 in
+      let cuniv = ccnv CONV l2r infos el1 el2 ty1 ty2 cuniv in
+      let cuniv = Parray64.fold_left2 (fun u a b -> ccnv CONV l2r infos el1 el2 a b u) cuniv t1 t2 in
       convert_stacks l2r infos lft1 lft2 v1 v2 cuniv
 
     | FArray (u1,t1,ty1), FArray (u2,t2,ty2) ->
@@ -811,8 +860,8 @@ and eqwhnf cv_pb l2r infos (lft1, (hd1, v1) as appr1) (lft2, (hd2, v2) as appr2)
        | (FLOCKED,_) | (_,FLOCKED) ) -> assert false
 
      | (FRel _ | FAtom _ | FInd _ | FFix _ | FCoFix _ | FCaseInvert _
-       | FProd _ | FEvar _ | FInt _ | FFloat _ | FString _
-       | FArray _ | FIrrelevant), _ -> raise NotConvertible
+       | FProd _ | FEvar _ | FInt _ | FWord8 _ | FWord16 _ | FWord32 _ | FWord64 _ | FWord128 _ | FWord256 _ | FFloat _ | FString _
+       | FArray _ | FArray64 _ | FIrrelevant), _ -> raise NotConvertible
 
 and convert_stacks ?(mask = [||]) l2r infos lft1 lft2 stk1 stk2 cuniv =
   let f (l1, t1) (l2, t2) cuniv = ccnv CONV l2r infos l1 l2 t1 t2 cuniv in

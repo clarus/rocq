@@ -180,7 +180,7 @@ let flex_kind_of_term flags env evd c sk =
        else Rigid
     | Evar ev ->
        if is_evar_allowed flags evd (fst ev) then Flexible ev else Rigid
-    | Lambda _ | Prod _ | Sort _ | Ind _ | Int _ | Float _ | String _ | Array _ -> Rigid
+    | Lambda _ | Prod _ | Sort _ | Ind _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> Rigid
     | Construct _ | CoFix _ (* Incorrect: should check only app in sk *) -> Rigid
     | Meta _ -> Rigid
     | Fix _ -> Rigid (* happens when the fixpoint is partially applied (should check it?) *)
@@ -265,7 +265,7 @@ let occur_rigidly flags env evd (evk,_) t =
       (match aux c with
       | Rigid b -> Rigid b
       | _ -> Reducible)
-    | Meta _ | Fix _ | CoFix _ | Int _ | Float _ | String _ | Array _ -> Reducible
+    | Meta _ | Fix _ | CoFix _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ -> Reducible
   in
     match aux t with
     | Rigid b -> b
@@ -494,7 +494,7 @@ let compare_heads pbty env evd ~nargs term term' =
   in
   match EConstr.kind evd term, EConstr.kind evd term' with
   | Const (c, u), Const (c', u') when QConstant.equal env c c' ->
-    if is_applied nargs 1 && Environ.is_array_type env c
+    if is_applied nargs 1 && (Environ.is_array_type env c || Environ.is_array64_type env c)
     then
       let u = EInstance.kind evd u and u' = EInstance.kind evd u' in
       compare_cumulative_instances pbty evd [|UVars.Variance.Irrelevant|] u u'
@@ -1194,7 +1194,7 @@ and evar_eqappr_x ?(rhs_is_already_stuck = false) flags env evd pbty
              only if necessary) or the second argument is potentially
              usable as a canonical projection or canonical value *)
           let rec is_unnamed (hd, args) = match EConstr.kind i hd with
-            | (Var _|Construct _|Ind _|Const _|Prod _|Sort _|Int _ |Float _|String _|Array _) ->
+            | (Var _|Construct _|Ind _|Const _|Prod _|Sort _|Int _|Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _|Float _|String _|Array _|Array64 _) ->
               Stack.not_purely_applicative args
             | (CoFix _|Meta _|Rel _)-> true
             | Evar _ -> Stack.not_purely_applicative args
@@ -1334,8 +1334,11 @@ and evar_eqappr_x ?(rhs_is_already_stuck = false) flags env evd pbty
         | Ind _, Ind _
         | Construct _, Construct _
         | Int _, Int _
+        | Word8 _, Word8 _ | Word16 _, Word16 _ | Word32 _, Word32 _ | Word64 _, Word64 _
+        | Word128 _, Word128 _ | Word256 _, Word256 _
         | Float _, Float _
         | String _, String _
+        | Array64 _, Array64 _
         | Array _, Array _ ->
           rigids env evd sk1 term1 sk2 term2
 
@@ -1413,9 +1416,9 @@ and evar_eqappr_x ?(rhs_is_already_stuck = false) flags env evd pbty
           | None -> UnifFailure (evd,NotSameHead)
           end
 
-        | (Ind _ | Sort _ | Prod _ | CoFix _ | Fix _ | Rel _ | Var _ | Const _ | Int _ | Float _ | String _ | Array _ | Evar _ | Lambda _), _ ->
+        | (Ind _ | Sort _ | Prod _ | CoFix _ | Fix _ | Rel _ | Var _ | Const _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _ | Evar _ | Lambda _), _ ->
           UnifFailure (evd,NotSameHead)
-        | _, (Ind _ | Sort _ | Prod _ | CoFix _ | Fix _ | Rel _ | Var _ | Const _ | Int _ | Array _ | Evar _ | Lambda _) ->
+        | _, (Ind _ | Sort _ | Prod _ | CoFix _ | Fix _ | Rel _ | Var _ | Const _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Array _ | Array64 _ | Evar _ | Lambda _) ->
           UnifFailure (evd,NotSameHead)
         | Case _, _ -> UnifFailure (evd,NotSameHead)
         | Proj _, _ -> UnifFailure (evd,NotSameHead)

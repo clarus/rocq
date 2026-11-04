@@ -99,7 +99,7 @@ struct
     (* Despite the type, the sparse list contains no default element *)
     SList.Skip.iter (f h) args
   | Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-  | Construct _ | Int _ | Float _ | String _ -> ()
+  | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ -> ()
   | Cast (c, _, t) -> f h c; f h t
   | Prod (_, t, c) -> f h t; f (liftn_handle 1 h) c
   | Lambda (_, t, c) -> f h t; f (liftn_handle 1 h) c
@@ -118,6 +118,7 @@ struct
   | CoFix (_, (_, tl, bl)) ->
     Array.Fun1.iter f h tl;
     Array.Fun1.iter f (liftn_handle (Array.length tl) h) bl
+  | Array64(_, t, ty) -> Array64chunks.iter (f h) t; f h ty
   | Array(_u, t, def, ty) ->
     Array.iter (f h) t; f h def; f h ty
 
@@ -128,7 +129,7 @@ struct
     (* Despite the type, the sparse list contains no default element *)
     SList.Skip.iter (f l h) args
   | Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-  | Construct _ | Int _ | Float _ | String _ -> ()
+  | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ -> ()
   | Cast (c, _, t) -> f l h c; f l h t
   | Prod (_, t, c) -> f l h t; f (g l) (liftn_handle 1 h) c
   | Lambda (_, t, c) -> f l h t; f (g l) (liftn_handle 1 h) c
@@ -147,6 +148,7 @@ struct
   | CoFix (_, (_, tl, bl)) ->
     Array.iter (fun c -> f l h c) tl;
     Array.iter (f (iterate g (Array.length tl) l) (liftn_handle (Array.length tl) h)) bl
+  | Array64(_, t, ty) -> Array64chunks.iter (fun c -> f l h c) t; f l h ty
   | Array(_u, t, def, ty) ->
     Array.iter (fun c -> f l h c) t; f l h def; f l h ty
 
@@ -210,6 +212,7 @@ let mkArrowR t1 t2 = mkArrow t1 ERelevance.relevant t2
 let mkInt i = of_kind (Int i)
 let mkFloat f = of_kind (Float f)
 let mkString s = of_kind (String s)
+let mkArray64 (u,t,ty) = of_kind (Array64 (u,t,ty))
 let mkArray (u,t,def,ty) = of_kind (Array (u,t,def,ty))
 
 let mkRef (gr,u) = let open GlobRef in match gr with
@@ -704,7 +707,7 @@ let iter_with_full_binders env sigma g f n c =
   let open Context.Rel.Declaration in
   match kind sigma c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
-    | Construct _ | Int _ | Float _ | String _) -> ()
+    | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) -> ()
   | Cast (c,_,t) -> f n c; f n t
   | Prod (na,t,c) -> f n t; f (g (LocalAssum (na, t)) n) c
   | Lambda (na,t,c) -> f n t; f (g (LocalAssum (na, t)) n) c
@@ -726,6 +729,7 @@ let iter_with_full_binders env sigma g f n c =
     Array.iter (f n) tl;
     let n' = Array.fold_left2_i (fun i n na t -> g (LocalAssum (na,lift i t)) n) n lna tl in
     Array.iter (f n') bl
+  | Array64(_,t,ty) -> Array64chunks.iter (f n) t; f n ty
   | Array (_u,t,def,ty) -> Array.Fun1.iter f n t; f n def; f n ty
 
 let iter_with_binders sigma g f n c =
@@ -823,7 +827,7 @@ let eq_universes env sigma cstrs cv_pb refargs l l' =
     let open GlobRef in
     let open UnivProblem in
     match refargs with
-    | Some (ConstRef c, 1) when Environ.is_array_type env c ->
+    | Some (ConstRef c, 1) when (Environ.is_array_type env c || Environ.is_array64_type env c) ->
       cstrs := compare_cumulative_instances cv_pb [|UVars.Variance.Irrelevant|] l l' !cstrs;
       true
     | None | Some (ConstRef _, _) ->
@@ -1329,7 +1333,7 @@ let kind_of_type sigma t = match kind sigma t with
   | (Rel _ | Meta _ | Var _ | Evar _ | Const _
   | Proj _ | Case _ | Fix _ | CoFix _ | Ind _)
     -> AtomicType (t,[||])
-  | (Lambda _ | Construct _ | Int _ | Float _ | String _ | Array _) -> failwith "Not a type"
+  | (Lambda _ | Construct _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _ | Array _ | Array64 _) -> failwith "Not a type"
 
 module Unsafe =
 struct

@@ -1,0 +1,2 @@
+; Compatibility adapters and test generators are built by the check helper.
+(dirs theories)

@@ -256,6 +256,12 @@ let compare_notation_constr lt var_eq_hole (vars1,vars2) t1 t2 =
     if not (Option.equal cast_kind_eq k1 k2) then raise_notrace Exit;
     aux vars renaming t1 t2
   | NInt i1, NInt i2 when Uint63.equal i1 i2 -> ()
+  | NWord8 i1, NWord8 i2 when Primitive_words_runtime.Word8.equal i1 i2 -> ()
+  | NWord16 i1, NWord16 i2 when Primitive_words_runtime.Word16.equal i1 i2 -> ()
+  | NWord32 i1, NWord32 i2 when Primitive_words_runtime.Word32.equal i1 i2 -> ()
+  | NWord64 i1, NWord64 i2 when Primitive_words_runtime.Word64.equal i1 i2 -> ()
+  | NWord128 i1, NWord128 i2 when Primitive_words_runtime.Word128.equal i1 i2 -> ()
+  | NWord256 i1, NWord256 i2 when Primitive_words_runtime.Word256.equal i1 i2 -> ()
   | NFloat f1, NFloat f2 when Float64.equal f1 f2 -> ()
   | NArray(t1,def1,ty1), NArray(t2,def2,ty2) ->
     Array.iter2 (aux vars renaming) t1 t2;
@@ -263,7 +269,7 @@ let compare_notation_constr lt var_eq_hole (vars1,vars2) t1 t2 =
     aux vars renaming ty1 ty2
   | (NRef _ | NVar _ | NApp _ | NProj _ | NHole _ | NGenarg _ | NList _ | NLambda _ | NProd _
     | NBinderList _ | NLetIn _ | NCases _ | NLetTuple _ | NIf _
-    | NRec _ | NSort _ | NCast _ | NInt _ | NFloat _ | NString _ | NArray _), _ -> raise_notrace Exit in
+    | NRec _ | NSort _ | NCast _ | NInt _ | NWord8 _ | NWord16 _ | NWord32 _ | NWord64 _ | NWord128 _ | NWord256 _ | NFloat _ | NString _ | NArray _), _ -> raise_notrace Exit in
   try
     let _ = aux (vars1,vars2) [] t1 t2 in
     if not lt then
@@ -467,6 +473,12 @@ let glob_constr_of_notation_constr_with_binders ?loc g f ?(h=default_binder_stat
   | NGenarg arg -> GGenarg arg
   | NRef (x,u) -> GRef (x,u)
   | NInt i -> GInt i
+  | NWord8 i -> GWord8 i
+  | NWord16 i -> GWord16 i
+  | NWord32 i -> GWord32 i
+  | NWord64 i -> GWord64 i
+  | NWord128 i -> GWord128 i
+  | NWord256 i -> GWord256 i
   | NFloat f -> GFloat f
   | NString s -> GString s
   | NArray (t,def,ty) -> GArray(None, Array.map (f e) t, f e def, f e ty)
@@ -701,6 +713,12 @@ let notation_constr_and_vars_of_glob_constr recvars a =
     NCast (aux c, k, aux t)
   | GSort s -> NSort s
   | GInt i -> NInt i
+  | GWord8 i -> NWord8 i
+  | GWord16 i -> NWord16 i
+  | GWord32 i -> NWord32 i
+  | GWord64 i -> NWord64 i
+  | GWord128 i -> NWord128 i
+  | GWord256 i -> NWord256 i
   | GFloat f -> NFloat f
   | GString s -> NString s
   | GHole w -> NHole w
@@ -909,6 +927,7 @@ let rec subst_notation_constr subst bound raw =
 
   | NSort _ -> raw
   | NInt _ -> raw
+  | NWord8 _ | NWord16 _ | NWord32 _ | NWord64 _ | NWord128 _ | NWord256 _ -> raw
   | NFloat _ -> raw
   | NString _ -> raw
 
@@ -1593,6 +1612,9 @@ let rec match_ inner u alp metas sigma a1 a2 =
   | GSort s1, NSort s2 when glob_sort_eq s1 s2 -> sigma
 
   | GInt i1, NInt i2 when Uint63.equal i1 i2 -> sigma
+  | GWord64 i1, NWord64 i2 when Primitive_words_runtime.Word64.equal i1 i2 -> sigma
+  | GWord128 i1, NWord128 i2 when Primitive_words_runtime.Word128.equal i1 i2 -> sigma
+  | GWord256 i1, NWord256 i2 when Primitive_words_runtime.Word256.equal i1 i2 -> sigma
   | GFloat f1, NFloat f2 when Float64.equal f1 f2 -> sigma
   | GString s1, NString s2 when Pstring.equal s1 s2 -> sigma
   | GPatVar _, NHole _ -> (*Don't hide Metas, they bind in ltac*) raise No_match
@@ -1629,7 +1651,7 @@ let rec match_ inner u alp metas sigma a1 a2 =
 
   | (GRef _ | GVar _ | GEvar _ | GPatVar _ | GApp _ | GProj _ | GLambda _ | GProd _
      | GLetIn _ | GCases _ | GLetTuple _ | GIf _ | GRec _ | GSort _ | GHole _ | GGenarg _
-     | GCast _ | GInt _ | GFloat _ | GString _ | GArray _), _ -> raise No_match
+     | GCast _ | GInt _ | GWord8 _ | GWord16 _ | GWord32 _ | GWord64 _ | GWord128 _ | GWord256 _ | GFloat _ | GString _ | GArray _), _ -> raise No_match
 
 and match_in_type u alp metas sigma t = function
   | None -> sigma

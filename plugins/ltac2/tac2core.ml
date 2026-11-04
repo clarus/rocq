@@ -575,10 +575,18 @@ let () =
     |]
   | Int n ->
     v_blk 17 [|Tac2ffi.of_uint63 n|]
+  | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ ->
+    CErrors.user_err Pp.(str "Ltac2 reflection of primitive words is unsupported")
   | Float f ->
     v_blk 18 [|Tac2ffi.of_float f|]
   | String s ->
     v_blk 19 [|Tac2ffi.of_pstring s|]
+  | Array64 (u, chunks, ty) ->
+    v_blk 21 [|
+      of_instance u;
+      Tac2ffi.of_list (Tac2ffi.of_array Tac2ffi.of_constr) (Array64chunks.to_arrays chunks);
+      Tac2ffi.of_constr ty;
+    |]
   | Array(u,t,def,ty) ->
     v_blk 20 [|
       of_instance u;
@@ -677,6 +685,11 @@ let () =
     let ty = Tac2ffi.to_constr ty in
     let u = to_instance u in
     EConstr.mkArray(u,t,def,ty)
+  | (21, [|u; chunks; ty|]) ->
+    let chunks = Tac2ffi.to_list (Tac2ffi.to_array Tac2ffi.to_constr) chunks in
+    let ty = Tac2ffi.to_constr ty in
+    let u = to_instance u in
+    EConstr.mkArray64 (u, Array64chunks.of_arrays chunks, ty)
   | _ -> assert false
 
 let () =

@@ -108,8 +108,10 @@ let ast_iter_references do_term do_cons do_type a =
         Array.iter (fun (_,p,_) -> patt_iter_references do_cons p) v
 
       | MLrel _ | MLlam _ | MLapp _ | MLletin _ | MLtuple _ | MLfix _ | MLexn _
-      | MLdummy _ | MLaxiom _ | MLmagic _ | MLuint _ | MLfloat _
-      | MLstring _ | MLparray _ -> ()
+      | MLdummy _ | MLaxiom _ | MLmagic _ | MLuint _
+      | MLword8 _ | MLword16 _ | MLword32 _ | MLword64 _ | MLword128 _
+      | MLword256 _ | MLfloat _
+      | MLstring _ | MLparray _ | MLarray64 _ -> ()
   in iter a
 
 let ind_iter_references do_term do_cons do_type ind =

@@ -8,6 +8,12 @@ type data =
 type obj =
 | Struct of int * data array (* tag × data *)
 | Int64 of Int64.t (* Primitive integer *)
+| Word8 of Int64.t
+| Word16 of Int64.t
+| Word32 of Int64.t
+| Word64 of Int64.t (* Primitive word64 payload *)
+| Word128 of Int64.t * Int64.t
+| Word256 of Int64.t * Int64.t * Int64.t * Int64.t
 | Float64 of float (* Primitive float *)
 | String of string
 

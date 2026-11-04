@@ -32,6 +32,12 @@ type 'v kind =
   | String
   | Annot of string * 'v
   | Int64
+  | Word8
+  | Word16
+  | Word32
+  | Word64
+  | Word128
+  | Word256
   | Float64
 
 module Vector = struct
@@ -135,6 +141,12 @@ let v_annot_c (a, v) = v_annot a v
 let v_any = of_kind Any
 let v_int = of_kind Int
 let v_int64 = of_kind Int64
+let v_word8 = of_kind Word8
+let v_word16 = of_kind Word16
+let v_word32 = of_kind Word32
+let v_word64 = of_kind Word64
+let v_word128 = of_kind Word128
+let v_word256 = of_kind Word256
 let v_float64 = of_kind Float64
 let v_string = of_kind String
 let v_opt v = of_kind @@ Opt v
@@ -275,9 +287,16 @@ let v_case_return = v_tuple_c ("case_return", [|v_tuple_c ("case_return'", [|v_a
     [|v_cofix|]; (* CoFix *)
     [|v_proj;v_relevance;v_constr|]; (* Proj *)
     [|v_uint63|]; (* v_int *)
+    [|v_word8|];
+    [|v_word16|];
+    [|v_word32|];
+    [|v_word64|]; (* v_word64 *)
+    [|v_word128|]; (* v_word128 *)
+    [|v_word256|]; (* v_word256 *)
     [|v_float64|]; (* Float *)
     [|v_string|]; (* v_string *)
-    [|v_instance;v_array v_constr;v_constr;v_constr|] (* v_array *)
+    [|v_instance;v_array v_constr;v_constr;v_constr|]; (* v_array *)
+    [|v_instance;v_list (v_array v_constr);v_constr|] (* v_array64 *)
   |]))
 
 let v_rdecl = v_sum "rel_declaration" 0
@@ -348,8 +367,12 @@ let v_template_universes =
     v_instance;
   |]
 
+let v_word_width = v_enum "word_width" 6
+let v_word_op = v_enum "word_op" 20
+
 let v_primitive =
-  v_enum "primitive" 63 (* Number of constructors of the CPrimitives.t type *)
+  (* 61 constant constructors plus allocated Word and Array64 operations. *)
+  v_sum "primitive" 61 [|[|v_word_width; v_word_op|];[|v_enum "array64_op" 8|]|]
 
 let v_cst_def =
   v_sum "constant_def" 0
@@ -367,7 +390,9 @@ let v_vm_reloc_table = v_array (v_pair v_int v_int)
 
 let v_vm_annot_switch = v_tuple "vm_annot_switch" [|v_vm_reloc_table; v_bool; v_int|]
 
-let v_vm_caml_prim = v_enum "vm_caml_prim" 12
+let v_vm_caml_prim =
+  (* Thirteen array/string constants plus allocated Word and Array64 calls. *)
+  v_sum "vm_caml_prim" 13 [|[|v_word_width; v_word_op|];[|v_enum "array64_op" 8|]|]
 (* Number of constructors of the caml_prim type in "kernel/vmbytecodes.ml" *)
 
 let v_non_subst_reloc = v_sum "vm_non_subst_reloc" 0 [|
@@ -480,10 +505,10 @@ let v_ind_pack = v_tuple "mutual_inductive_body"
     v_opt v_bool;
     v_typing_flags|]
 
-let v_prim_ind = v_enum "prim_ind" 6
-(* Number of "Register ... as kernel.ind_..." in Primv_int63.v and PrimFloat.v *)
+let v_prim_ind = v_enum "prim_ind" 7
+(* Number of constructors of prim_ind in "kernel/cPrimitives.ml" *)
 
-let v_prim_type = v_enum "prim_type" 4
+let v_prim_type = v_enum "prim_type" 11
 (* Number of constructors of prim_type in "kernel/cPrimitives.ml" *)
 
 let v_retro_action =

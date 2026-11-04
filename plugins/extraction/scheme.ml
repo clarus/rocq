@@ -133,10 +133,24 @@ let rec pp_expr table env args =
     | MLaxiom s -> paren (str "error \"AXIOM TO BE REALIZED (" ++ str s ++ str ")\"")
     | MLuint _ ->
       paren (str "Prelude.error \"EXTRACTION OF UINT NOT IMPLEMENTED\"")
+    | MLword8 _ ->
+      paren (str "error \"EXTRACTION OF WORD8 NOT IMPLEMENTED\"")
+    | MLword16 _ ->
+      paren (str "error \"EXTRACTION OF WORD16 NOT IMPLEMENTED\"")
+    | MLword32 _ ->
+      paren (str "error \"EXTRACTION OF WORD32 NOT IMPLEMENTED\"")
+    | MLword64 _ ->
+      paren (str "error \"EXTRACTION OF WORD64 NOT IMPLEMENTED\"")
+    | MLword128 _ ->
+      paren (str "error \"EXTRACTION OF WORD128 NOT IMPLEMENTED\"")
+    | MLword256 _ ->
+      paren (str "error \"EXTRACTION OF WORD256 NOT IMPLEMENTED\"")
     | MLfloat _ ->
       paren (str "Prelude.error \"EXTRACTION OF FLOAT NOT IMPLEMENTED\"")
     | MLstring _ ->
       paren (str "Prelude.error \"EXTRACTION OF STRING NOT IMPLEMENTED\"")
+    | MLarray64 _ ->
+      CErrors.user_err Pp.(str "Array64 extraction is supported only for OCaml")
     | MLparray _ ->
             paren (str "Prelude.error \"EXTRACTION OF PARRAY NOT IMPLEMENTED\"")
 

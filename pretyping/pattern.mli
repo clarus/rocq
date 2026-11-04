@@ -39,9 +39,16 @@ type 'i constr_pattern_r =
   | PFix of (int array * int) * (Name.t array * 'i constr_pattern_r array * 'i constr_pattern_r array)
   | PCoFix of int * (Name.t array * 'i constr_pattern_r array * 'i constr_pattern_r array)
   | PInt of Uint63.t
+  | PWord8 of Primitive_words_runtime.Word8.t
+  | PWord16 of Primitive_words_runtime.Word16.t
+  | PWord32 of Primitive_words_runtime.Word32.t
+  | PWord64 of Primitive_words_runtime.Word64.t
+  | PWord128 of Primitive_words_runtime.Word128.t
+  | PWord256 of Primitive_words_runtime.Word256.t
   | PFloat of Float64.t
   | PString of Pstring.t
   | PArray of 'i constr_pattern_r array * 'i constr_pattern_r * 'i constr_pattern_r
+  | PArray64 of 'i constr_pattern_r Array64chunks.t * 'i constr_pattern_r
   | PExtra of 'i
 
 type constr_pattern = Util.Empty.t constr_pattern_r

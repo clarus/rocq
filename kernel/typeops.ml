@@ -265,13 +265,21 @@ let type_of_prim_type _env u (type a) (prim : a CPrimitives.prim_type) = match p
   | CPrimitives.PT_int63 ->
     assert (UVars.Instance.is_empty u);
     Constr.mkSet
+  | CPrimitives.PT_word8
+  | CPrimitives.PT_word16
+  | CPrimitives.PT_word32
+  | CPrimitives.PT_word64
+  | CPrimitives.PT_word128
+  | CPrimitives.PT_word256 ->
+    assert (UVars.Instance.is_empty u);
+    Constr.mkSet
   | CPrimitives.PT_float64 ->
     assert (UVars.Instance.is_empty u);
     Constr.mkSet
   | CPrimitives.PT_string ->
     assert (UVars.Instance.is_empty u);
     Constr.mkSet
-  | CPrimitives.PT_array ->
+  | CPrimitives.PT_array | CPrimitives.PT_array64 ->
     begin match UVars.Instance.to_array u with
     | [||], [|u|] ->
       let ty = Constr.mkType (Univ.Universe.make u) in
@@ -283,6 +291,36 @@ let type_of_int env =
   match (Environ.retroknowledge env).Retroknowledge.retro_int63 with
   | Some c -> UnsafeMonomorphic.mkConst c
   | None -> CErrors.user_err Pp.(str"The type int must be registered before this construction can be typechecked.")
+
+let type_of_word64 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word64 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word64 must be registered before this construction can be typechecked.")
+
+let type_of_word8 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word8 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word8 must be registered before this construction can be typechecked.")
+
+let type_of_word16 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word16 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word16 must be registered before this construction can be typechecked.")
+
+let type_of_word32 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word32 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word32 must be registered before this construction can be typechecked.")
+
+let type_of_word128 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word128 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word128 must be registered before this construction can be typechecked.")
+
+let type_of_word256 env =
+  match (Environ.retroknowledge env).Retroknowledge.retro_word256 with
+  | Some c -> UnsafeMonomorphic.mkConst c
+  | None -> CErrors.user_err Pp.(str"The type word256 must be registered before this construction can be typechecked.")
 
 let type_of_float env =
   match (Environ.retroknowledge env).Retroknowledge.retro_float64 with
@@ -299,6 +337,13 @@ let type_of_array env u =
   match (Environ.retroknowledge env).Retroknowledge.retro_array with
   | Some c -> mkConstU (c,u)
   | None -> CErrors.user_err Pp.(str"The type array must be registered before this construction can be typechecked.")
+
+let type_of_array64 env u =
+  if UVars.Instance.length u <> (0,1) then
+    CErrors.user_err Pp.(str "Invalid universe instance for array64 literal.");
+  match (Environ.retroknowledge env).Retroknowledge.retro_array64 with
+  | Some c -> mkConstU (c,u)
+  | None -> CErrors.user_err Pp.(str"The type array64 must be registered before this construction can be typechecked.")
 
 (* Type of product *)
 
@@ -777,6 +822,12 @@ and execute_aux tbl env cstr =
 
     (* Primitive types *)
     | Int _ -> type_of_int env
+    | Word8 _ -> type_of_word8 env
+    | Word16 _ -> type_of_word16 env
+    | Word32 _ -> type_of_word32 env
+    | Word64 _ -> type_of_word64 env
+    | Word128 _ -> type_of_word128 env
+    | Word256 _ -> type_of_word256 env
     | Float _ -> type_of_float env
     | String _ -> type_of_string env
     | Array(u,t,def,ty) ->
@@ -797,6 +848,26 @@ and execute_aux tbl env cstr =
           t
       in
       mkApp(ta, [|ty|])
+
+    | Array64 (u, chunks, ty) ->
+      let ulev = match UVars.Instance.to_array u with
+        | [||], [|u|] -> u
+        | _ -> CErrors.user_err Pp.(str "Invalid universe instance for array64 literal.")
+      in
+      (* Count actual elements, never serialized runtime metadata. *)
+      let _ =
+        try Array64chunks.length chunks
+        with Invalid_argument _ ->
+          CErrors.user_err Pp.(str "Array64 literal length exceeds the unsigned 64-bit limit.")
+      in
+      let tyty = execute tbl env ty in
+      let ty = self ty in
+      check_cast env ty tyty DEFAULTcast (mkType (Universe.make ulev));
+      let () = Array64chunks.iter (fun x ->
+        let xt = execute tbl env x in
+        check_cast env (self x) xt DEFAULTcast ty) chunks
+      in
+      mkApp (type_of_array64 env u, [|ty|])
 
     (* Partial proofs: unsupported by the kernel *)
     | Meta _ ->
@@ -902,9 +973,16 @@ let type_of_prim_const env _u c =
 let type_of_prim env u t =
   let module UM = UnsafeMonomorphic in
   let int_ty () = type_of_int env in
+  let word8_ty () = type_of_word8 env in
+  let word16_ty () = type_of_word16 env in
+  let word32_ty () = type_of_word32 env in
+  let word64_ty () = type_of_word64 env in
+  let word128_ty () = type_of_word128 env in
+  let word256_ty () = type_of_word256 env in
   let float_ty () = type_of_float env in
   let string_ty () = type_of_string env in
   let array_ty u a = mkApp(type_of_array env u, [|a|]) in
+  let array64_ty u a = mkApp(type_of_array64 env u, [|a|]) in
   let bool_ty () =
     match (Environ.retroknowledge env).Retroknowledge.retro_bool with
     | Some ((ind,_),_) -> UM.mkInd ind
@@ -935,17 +1013,30 @@ let type_of_prim env u t =
     | Some ((ind,_),_) -> Constr.mkApp(UM.mkInd ind, [|int_ty|])
     | None -> CErrors.user_err Pp.(str"The type carry must be registered before this primitive.")
   in
+  let option_ty elem_ty =
+    match (Environ.retroknowledge env).Retroknowledge.retro_option with
+    | Some ((ind,_),_) -> Constr.mkApp (UM.mkInd ind, [|elem_ty|])
+    | None -> CErrors.user_err Pp.(str"The type option must be registered before this primitive.")
+  in
   let open CPrimitives in
   let tr_prim_type (tr_type : ind_or_type -> constr) (type a) (ty : a prim_type) (t : a) = match ty with
     | PT_int63 -> int_ty t
+    | PT_word8 -> word8_ty t
+    | PT_word16 -> word16_ty t
+    | PT_word32 -> word32_ty t
+    | PT_word64 -> word64_ty t
+    | PT_word128 -> word128_ty t
+    | PT_word256 -> word256_ty t
     | PT_float64 -> float_ty t
     | PT_string -> string_ty t
     | PT_array -> array_ty (fst t) (tr_type (snd t))
+    | PT_array64 -> array64_ty (fst t) (tr_type (snd t))
   in
   let tr_ind (tr_type : ind_or_type -> constr) (type t) (i : t prim_ind) (a : t) = match i, a with
     | PIT_bool, () -> bool_ty ()
     | PIT_carry, t -> carry_ty (tr_type t)
     | PIT_pair, (t1, t2) -> pair_ty (tr_type t1) (tr_type t2)
+    | PIT_option, t -> option_ty (tr_type t)
     | PIT_cmp, () -> compare_ty ()
     | PIT_f_cmp, () -> f_compare_ty ()
     | PIT_f_class, () -> f_class_ty ()

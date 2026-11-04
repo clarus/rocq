@@ -180,6 +180,7 @@ val mkArrowR : t -> t -> t
 val mkInt : Uint63.t -> t
 val mkFloat : Float64.t -> t
 val mkString : Pstring.t -> t
+val mkArray64 : EInstance.t * t Array64chunks.t * t -> t
 val mkArray : EInstance.t * t array * t * t -> t
 
 module UnsafeMonomorphic : sig

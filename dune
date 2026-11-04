@@ -90,3 +90,6 @@
   (source_tree plugins)))
 
 ; (dirs (:standard _build_ci))
+
+; The Stdlib-dependent integer API builds separately after Stdlib.
+(dirs :standard \ native-integers)

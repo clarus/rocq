@@ -73,7 +73,17 @@ val mkVar : Id.t -> constr
 (** Constructs a machine integer *)
 val mkInt : Uint63.t -> constr
 
+(** Constructs width-distinct primitive words. *)
+val mkWord8 : Primitive_words_runtime.Word8.t -> constr
+val mkWord16 : Primitive_words_runtime.Word16.t -> constr
+val mkWord32 : Primitive_words_runtime.Word32.t -> constr
+val mkWord64 : Primitive_words_runtime.Word64.t -> constr
+val mkWord128 : Primitive_words_runtime.Word128.t -> constr
+val mkWord256 : Primitive_words_runtime.Word256.t -> constr
+
 (** Constructs an array *)
+val mkArray64 : UVars.Instance.t * constr Array64chunks.t * types -> constr
+
 val mkArray : UVars.Instance.t * constr array * constr * types -> constr
 
 (** Constructs a machine float number *)
@@ -286,11 +296,18 @@ type ('constr, 'types, 'sort, 'univs, 'r) kind_of_term =
   | Proj      of Projection.t * 'r * 'constr
   (** The relevance is the relevance of the whole term *)
   | Int       of Uint63.t
+  | Word8     of Primitive_words_runtime.Word8.t
+  | Word16    of Primitive_words_runtime.Word16.t
+  | Word32    of Primitive_words_runtime.Word32.t
+  | Word64    of Primitive_words_runtime.Word64.t
+  | Word128   of Primitive_words_runtime.Word128.t
+  | Word256   of Primitive_words_runtime.Word256.t
   | Float     of Float64.t
   | String    of Pstring.t
   | Array     of 'univs * 'constr array * 'constr * 'types
-  (** [Array (u,vals,def,t)] is an array of [vals] in type [t] with default value [def].
-      [u] is a universe containing [t]. *)
+  | Array64   of 'univs * 'constr Array64chunks.t * 'types
+  (** [Array64 (u,chunks,t)] is a default-free dense sequence in type [t].
+      Chunk boundaries are unobservable; [u] is a universe containing [t]. *)
 
 (** User view of [constr]. For [App], it is ensured there is at
    least one argument and the function is not itself an applicative

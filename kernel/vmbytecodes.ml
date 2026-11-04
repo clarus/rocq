@@ -40,6 +40,9 @@ type caml_prim =
 | CAML_Stringsub
 | CAML_Stringcat
 | CAML_Stringcompare
+| CAML_Word of CPrimitives.word_width * CPrimitives.word_op
+| CAML_Array64 of CPrimitives.array64_op
+| CAML_Array64ofchunks
 
 type instruction =
   | Klabel of Label.t
@@ -103,6 +106,22 @@ let caml_prim_to_prim = function
 | CAML_Stringsub -> CPrimitives.Stringsub
 | CAML_Stringcat -> CPrimitives.Stringcat
 | CAML_Stringcompare -> CPrimitives.Stringcompare
+| CAML_Word (width, op) -> CPrimitives.Word (width, op)
+| CAML_Array64 op -> CPrimitives.Array64 op
+| CAML_Array64ofchunks -> assert false
+
+let equal_caml_prim a b = match a, b with
+| CAML_Array64ofchunks, CAML_Array64ofchunks -> true
+| CAML_Array64ofchunks, _ | _, CAML_Array64ofchunks -> false
+| _ -> CPrimitives.equal (caml_prim_to_prim a) (caml_prim_to_prim b)
+
+let hash_caml_prim = function
+| CAML_Array64ofchunks -> -1
+| p -> CPrimitives.hash (caml_prim_to_prim p)
+
+let string_of_caml_prim = function
+| CAML_Array64ofchunks -> "array64_of_chunks"
+| p -> CPrimitives.to_string (caml_prim_to_prim p)
 
 let pp_lbl lbl = str "L" ++ int lbl
 
@@ -176,7 +195,7 @@ let rec pp_instr i =
         (Constant.print (fst id))
 
   | Kcamlprim (op, lbl) ->
-    str "camlcall " ++ str (CPrimitives.to_string (caml_prim_to_prim op)) ++ str ", branch " ++
+    str "camlcall " ++ str (string_of_caml_prim op) ++ str ", branch " ++
     pp_lbl lbl ++ str " on accu"
 
 and pp_bytecodes c =

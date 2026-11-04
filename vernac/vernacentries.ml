@@ -2421,6 +2421,7 @@ let vernac_register ~atts qid r =
         | "ind_bool" -> CPrimitives.(PIE PIT_bool)
         | "ind_carry" -> CPrimitives.(PIE PIT_carry)
         | "ind_pair" -> CPrimitives.(PIE PIT_pair)
+        | "ind_option" -> CPrimitives.(PIE PIT_option)
         | "ind_cmp" -> CPrimitives.(PIE PIT_cmp)
         | "ind_f_cmp" -> CPrimitives.(PIE PIT_f_cmp)
         | "ind_f_class" -> CPrimitives.(PIE PIT_f_class)

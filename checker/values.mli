@@ -33,6 +33,12 @@ type 'v kind = private
   (** Adds a debug note to the inner value *)
 
   | Int64
+  | Word8
+  | Word16
+  | Word32
+  | Word64
+  | Word128
+  | Word256
   | Float64
 
 type value
@@ -52,6 +58,12 @@ val v_int : value
 val v_string : value
 val v_annot : string -> value -> value
 val v_int64 : value
+val v_word8 : value
+val v_word16 : value
+val v_word32 : value
+val v_word64 : value
+val v_word128 : value
+val v_word256 : value
 val v_float64 : value
 
 (** Define a recursive value. [fix (fun v -> v)] is invalid. *)

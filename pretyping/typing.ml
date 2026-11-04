@@ -444,6 +444,24 @@ let type_of_int env = EConstr.of_constr (Typeops.type_of_int env)
 let judge_of_int env v =
   { uj_val = mkInt v; uj_type = type_of_int env }
 
+let judge_of_word8 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord8 v); uj_type = EConstr.of_constr (Typeops.type_of_word8 env) }
+let judge_of_word16 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord16 v); uj_type = EConstr.of_constr (Typeops.type_of_word16 env) }
+let judge_of_word32 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord32 v); uj_type = EConstr.of_constr (Typeops.type_of_word32 env) }
+
+let type_of_word64 env = EConstr.of_constr (Typeops.type_of_word64 env)
+
+let judge_of_word64 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord64 v); uj_type = type_of_word64 env }
+
+let judge_of_word128 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord128 v); uj_type = EConstr.of_constr (Typeops.type_of_word128 env) }
+
+let judge_of_word256 env v =
+  { uj_val = EConstr.of_constr (Constr.mkWord256 v); uj_type = EConstr.of_constr (Typeops.type_of_word256 env) }
+
 let type_of_float env = EConstr.of_constr (Typeops.type_of_float env)
 
 let judge_of_float env v =
@@ -453,6 +471,24 @@ let type_of_string env = EConstr.of_constr (Typeops.type_of_string env)
 
 let judge_of_string env v =
   { uj_val = mkString v; uj_type = type_of_string env }
+
+let judge_of_array64 env sigma u tj tyj =
+  let ulev = match UVars.Instance.to_array u with
+    | [||], [|u|] -> u
+    | _ -> CErrors.user_err Pp.(str "Invalid universe instance for array64 literal.")
+  in
+  let _ =
+    try Array64chunks.length tj
+    with Invalid_argument _ ->
+      CErrors.user_err Pp.(str "Array64 literal length exceeds the unsigned 64-bit limit.")
+  in
+  let sigma = Evd.set_leq_sort sigma tyj.utj_type
+      (ESorts.make (Sorts.sort_of_univ (Univ.Universe.make ulev))) in
+  let sigma = Array64chunks.fold_left (fun sigma j -> check_actual_type env sigma j tyj.utj_val) sigma tj in
+  let arr = EConstr.of_constr (Typeops.type_of_array64 env u) in
+  let j = make_judge (mkArray64(EInstance.make u, Array64chunks.map j_val tj, tyj.utj_val))
+      (mkApp(arr,[|tyj.utj_val|])) in
+  sigma, j
 
 let judge_of_array env sigma u tj defj tyj =
   let ulev = match UVars.Instance.to_array u with
@@ -643,12 +679,27 @@ let rec execute env sigma cstr =
     | Int i ->
         sigma, judge_of_int env i
 
+    | Word8 i -> sigma, judge_of_word8 env i
+    | Word16 i -> sigma, judge_of_word16 env i
+    | Word32 i -> sigma, judge_of_word32 env i
+
+    | Word64 i ->
+        sigma, judge_of_word64 env i
+
+    | Word128 i -> sigma, judge_of_word128 env i
+    | Word256 i -> sigma, judge_of_word256 env i
+
     | Float f ->
         sigma, judge_of_float env f
 
     | String s ->
         sigma, judge_of_string env s
 
+    | Array64(u,t,ty) ->
+      let sigma, tyj = execute env sigma ty in
+      let sigma, tyj = type_judgment env sigma tyj in
+      let sigma, tj = Array64chunks.fold_map (execute env) sigma t in
+      judge_of_array64 env sigma (EInstance.kind sigma u) tj tyj
     | Array(u,t,def,ty) ->
       let sigma, tyj = execute env sigma ty in
       let sigma, tyj = type_judgment env sigma tyj in
@@ -773,12 +824,12 @@ let rec recheck_against env sigma good c =
     match kind sigma good, kind sigma c with
     (* No subterms *)
     | _, (Meta _ | Rel _ | Var _ | Const _ | Ind _ | Construct _
-         | Sort _ | Int _ | Float _ | String _) ->
+         | Sort _ | Int _ | Word8 _ | Word16 _ | Word32 _ | Word64 _ | Word128 _ | Word256 _ | Float _ | String _) ->
       default ()
 
     (* Evar (todo deal with Evar differently??? execute recurses on its type)
        others: too annoying for now *)
-    | _, (Evar _ | Fix _ | CoFix _ | LetIn _ | Array _) ->
+    | _, (Evar _ | Fix _ | CoFix _ | LetIn _ | Array _ | Array64 _) ->
      default ()
 
     | Case (gci, gu, gpms, gp, giv, gc, glf),
